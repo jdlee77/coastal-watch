@@ -414,30 +414,6 @@ test.describe("River gauges in an Area of responsibility from the link", () => {
   const GULF = "#board&area=-89.5,30.15,-87.6,31&name=Gulf%20Coast";
   const openGulf = (page, opts = {}) => open(page, GULF, { moment: "gulf", ...opts });
 
-  test("a river gauge joins the Coastal area of its closest tide gauge", async ({ page }) => {
-    await page.setViewportSize(DESK);
-    await openGulf(page);
-    await expect(area(page, "Bay Waveland Yacht Club").locator("#card-NWPS-KLNM6")).toContainText("Jourdan River at Kiln");
-    await expect(area(page, "Chickasaw Creek").locator("#card-NWPS-SARA1")).toContainText("Bayou Sara at Saraland");
-  });
-
-  test("a river gauge more than 40 miles from every tide gauge anchors its own Coastal area, named after it", async ({ page }) => {
-    await page.setViewportSize(DESK);
-    await openGulf(page); // Merrill is 41 miles from Pascagoula NOAA Lab, its closest tide gauge
-    const own = area(page, "Pascagoula River at Merrill");
-    await expect(own.locator(".st:not(.nearby)")).toHaveCount(1); // its only own Station; a Nearby buoy may show too
-    await expect(own.locator("#card-NWPS-MRRM6")).toBeVisible();
-  });
-
-  test("in a rectangle wider than it is tall, Coastal areas run west to east", async ({ page }) => {
-    await page.setViewportSize(DESK);
-    await openGulf(page);
-    const names = await page.locator("#boardPane .area").evaluateAll(els => els.map(e => e.dataset.area));
-    expect(names).toEqual(["Bay Waveland Yacht Club", "Pascagoula River at Merrill", "Pascagoula NOAA Lab", "Bayou La Batre Bridge",
-      "West Fowl River Bridge", "East Fowl River Bridge", "Dog River Bridge", "Dauphin Island", "Chickasaw Creek",
-      "Coast Guard Sector Mobile", "Mobile State Docks"]);
-  });
-
   test("a river gauge above flood stage raises its Coastal area's Area status", async ({ page }) => {
     await page.setViewportSize(DESK);
     await openGulf(page, { edit: riverAt("PGFM6", 17) }); // Graham Ferry: minor flood from 16 ft
@@ -481,23 +457,6 @@ test.describe("CDIP wave buoys, read directly from CDIP", () => {
     await expect(card).toContainText("11 s, from E (70°)");
     await expect(card.locator(".time")).toHaveText(/^16:00 EST \(49 min ago\)$/);
     await expect(area(page, "Trident Pier, Port Canaveral").locator("#card-CDIP-143")).toContainText("Cape Canaveral Nearshore, FL");
-  });
-
-  test("an area without a buoy shows the closest buoy within 100 miles as a Nearby Station", async ({ page }) => {
-    await page.setViewportSize(DESK);
-    await openFlorida(page);
-    await expect(nearbyBuoys(page, "Dames Point")).toHaveCount(1);
-    await expect(nearbyBuoys(page, "Dames Point")).toHaveAttribute("data-key", "CDIP:194"); // 39 miles away
-    await expect(nearbyBuoys(page, "Mayport (Bar Pilots Dock)")).toHaveCount(0); // it has its own
-  });
-
-  test("no Nearby buoy when the closest is more than 100 miles away", async ({ page }) => {
-    await page.setViewportSize(DESK);
-    await openFlorida(page, { edit: notInCatalog("194p1") }); // next closest to Jacksonville: Cape Canaveral, about 150 miles
-    await expect(page.locator("[data-key='CDIP:194']")).toHaveCount(0);
-    for (const a of ["Mayport (Bar Pilots Dock)", "Dames Point", "Southbank Riverwalk, St Johns River", "I-295 Buckman Bridge"])
-      await expect(area(page, a).locator("[data-key^='CDIP:']")).toHaveCount(0);
-    await expect(area(page, "Trident Pier, Port Canaveral").locator("#card-CDIP-143")).toBeVisible();
   });
 
   test("only sites in CDIP's public real-time catalog are shown", async ({ page }) => {

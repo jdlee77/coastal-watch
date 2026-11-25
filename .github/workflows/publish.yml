@@ -41,7 +41,7 @@ jobs:
       - name: Build site folder
         run: |
           mkdir -p site/data
-          cp index.html feeds.html site/
+          cp index.html feeds.html coastal-areas.js site/
           cp -r vendor site/
           cp data/sensors.csv site/data/
           cp -r data/areas site/data/

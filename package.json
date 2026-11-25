@@ -3,7 +3,7 @@
   "private": true,
   "description": "Oregon coast compound flooding watch picture",
   "scripts": {
-    "test": "playwright test",
+    "test": "node --test tests/coastal-areas.unit.js && playwright test",
     "record-fixtures": "node tests/record-fixtures.js"
   },
   "devDependencies": {
