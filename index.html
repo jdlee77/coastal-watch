@@ -103,6 +103,8 @@ main { padding: 12px 16px 32px; display: grid; gap: 12px;
       grid-template-columns: 1fr auto; }
 .st:last-child { border-bottom: 0; }
 .st.nearby { opacity: .8; }
+.silent-note { padding: 6px 12px; color: var(--muted); font-size: .85rem; }
+body.compact .silent-note:not(.only) { display: none; }
 .st .name { font-weight: 600; }
 .st .kind { color: var(--muted); font-size: .8rem; font-weight: 400; }
 .st .val { font-size: 1.35rem; font-weight: 700; text-align: right; white-space: nowrap; }
@@ -158,6 +160,7 @@ footer a { color: inherit; }
   </select></label>
   <button id="refresh" type="button">Refresh now</button>
   <button id="compact" type="button" aria-pressed="false">Compact</button>
+  <button id="silentToggle" type="button" aria-pressed="false" title="Show or hide Silent Stations: no Reading in the last 24 hours">Silent (0)</button>
 </header>
 <div class="note" id="note" role="status"></div>
 <div id="layout">
@@ -671,12 +674,19 @@ function stationHTML(x, top, inPopup) {
     <div class="sub">${time}${link}</div>
   </div>`;
 }
+// Silent Station (CONTEXT.md): no Reading from the last 24 hours, Offline or never read.
+const isSilent = r => !!r.error || r.fresh === "offline";
+// Urgency: Threshold level first (major … below flood, then no threshold), Fresh before Stale, Silent last.
+const urgency = x => isSilent(x.r) ? -2 : x.r.level == null ? -1 : rank(x.r.level) * 2 + (x.r.fresh === "fresh" ? 1 : 0);
+const byUrgency = (a, b) => a.nearby - b.nearby || urgency(b) - urgency(a) || KIND_ORDER[a.s.kind] - KIND_ORDER[b.s.kind];
 // Most urgent Reading for the Compact view, from the area's own Stations when it has any.
 function topOf(all) {
   const own = all.filter(x => !x.nearby), items = own.length ? own : all;
-  const score = x => (x.r.fresh === "offline" || x.r.error ? -2 : x.r.level == null ? -1 : rank(x.r.level) * 2 + (x.r.fresh === "fresh" ? 1 : 0));
-  return [...items].sort((a, b) => score(b) - score(a) || KIND_ORDER[a.s.kind] - KIND_ORDER[b.s.kind])[0];
+  return [...items].sort(byUrgency)[0];
 }
+// Silent Stations are hidden on the Board and the Map unless the viewer shows them (remembered on the device).
+let showSilent = false;
+const shown = x => showSilent || !isSilent(x.r);
 
 let areas = [], compact = false, layout = "board";
 const isCompact = () => compact || layout === "split"; // Split always shows the Board in Compact
@@ -684,6 +694,11 @@ const isCompact = () => compact || layout === "split"; // Split always shows the
 function render() {
   for (const a of areas) for (const x of a.items) x.r.fresh = x.r.t ? freshness(x.r.t, x.s.network) : "offline";
   for (const a of areas) a.status = areaStatus(a.items.filter(x => !x.nearby));
+  const silent = areas.reduce((n, a) => n + a.items.filter(x => !x.nearby && isSilent(x.r)).length, 0);
+  const t = document.getElementById("silentToggle");
+  t.textContent = `Silent (${silent})`;
+  t.setAttribute("aria-pressed", String(showSilent));
+  t.title = (showSilent ? "Hide" : "Show") + ` ${silent} Silent Station${silent === 1 ? "" : "s"}: no Reading in the last 24 hours`;
   renderBoard();
   renderMap();
 }
@@ -692,11 +707,15 @@ function renderBoard() {
   document.body.classList.toggle("compact", c);
   const list = c ? [...areas].sort((a, b) => SORT[a.status.level] - SORT[b.status.level] || a.order - b.order) : areas;
   document.getElementById("areas").innerHTML = list.map(a => {
-    const top = c ? topOf(a.items) : null;
+    const items = a.items.filter(shown).sort(byUrgency);
+    const top = c ? topOf(items) : null;
     const st = a.status;
     const label = st.level === "nodata" ? "no current data" : st.level === "normal" ? "below flood" : st.level;
+    // An area whose own Stations are all silent stays on the Board, saying so: silence is not calm.
+    const hidden = a.items.filter(x => !x.nearby && !shown(x)).length;
+    const note = hidden ? `<div class="silent-note${items.some(x => !x.nearby) ? "" : " only"}">${hidden} Silent Station${hidden === 1 ? "" : "s"} hidden</div>` : "";
     return `<section class="area" data-area="${esc(a.name)}"><h2>${esc(a.name)} ${st.stale ? chip("stale", "stale") : ""} ${chip(st.level, label)}</h2>
-      ${a.items.map(x => stationHTML(x, x === top)).join("")}</section>`;
+      ${items.map(x => stationHTML(x, x === top)).join("")}${note}</section>`;
   }).join("");
 }
 
@@ -888,7 +907,7 @@ function mapLegend() {
 function renderMap() {
   if (!map) return;
   const px = Math.round(remPx() * 1.6);
-  const own = areas.flatMap(a => a.items.filter(x => !x.nearby)); // each Station once, where it is
+  const own = areas.flatMap(a => a.items.filter(x => !x.nearby && shown(x))); // each Station once, where it is
   const seen = new Set();
   for (const x of own) {
     const key = keyOf(x.s); seen.add(key);
@@ -1057,15 +1076,12 @@ async function refresh() {
     }
     areas = [...byArea.values()].sort((a, b) => a.order - b.order);
     renderOffices(stations, readings);
-    for (const a of areas) a.items.sort((x, y) => x.nearby - y.nearby || KIND_ORDER[x.s.kind] - KIND_ORDER[y.s.kind]);
-    const failed = [...readings.values()].filter(r => r.error).length;
     const n = def.leftOut || 0;
     document.getElementById("banner").innerHTML = (n
       ? `<div class="banner note" id="leftOut">${n} tide ${n === 1 ? "gauge is" : "gauges are"} left out: Great Lakes stations and stations with no tidal datum have no tide prediction or MLLW datum, so there is no Surge and no MLLW reading. River gauges and buoys there still show.</div>` : "") +
       (def.missing || []).map(k => `<div class="banner" data-missing="${k}">${esc(MISSING[k])} could not be loaded, so they are missing from this view, not absent. The page tries again at the next refresh.</div>`).join("") +
       (stations.length > BIG_AREA
-      ? `<div class="banner" id="bigArea">This area has ${stations.length} Stations, which is a lot to read and slow to refresh. A smaller area is easier to watch: use Choose area on the Map.</div>` : "") +
-      (failed ? `<div class="banner">${failed} of ${stations.length} Stations could not be read this time. They show “no data”.</div>` : "");
+      ? `<div class="banner" id="bigArea">This area has ${stations.length} Stations, which is a lot to read and slow to refresh. A smaller area is easier to watch: use Choose area on the Map.</div>` : "");
     document.getElementById("updated").textContent = "Refreshed " + fmtTime.format(new Date()) + " · every 5 min";
     render();
   } catch (e) {
@@ -1179,8 +1195,14 @@ document.querySelectorAll("#layoutGroup button").forEach(b => b.onclick = () => 
 document.getElementById("layoutToggle").onclick = () => setLayout(layout === "map" ? "board" : "map", true);
 document.getElementById("textsize").onchange = e => setText(e.target.value, true);
 document.getElementById("compact").onclick = () => setCompact(!compact);
+document.getElementById("silentToggle").onclick = () => {
+  showSilent = !showSilent;
+  store("cw-silent", showSilent ? "1" : "0");
+  if (areas.length) render();
+};
 document.getElementById("refresh").onclick = refresh;
 compact = recall("cw-compact") === "1";
+showSilent = recall("cw-silent") === "1";
 legend();
 initialLayout();
 refresh();

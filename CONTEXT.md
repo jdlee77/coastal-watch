@@ -77,6 +77,10 @@ _Avoid_: Late, delayed
 A Station whose latest Reading is more than 24 hours old.
 _Avoid_: Down, dead, out of service
 
+**Silent Station**:
+A Station with no Reading from the last 24 hours: it is Offline, or no Reading could be got from it at all. Silent Stations are hidden from the Board and the Map unless the viewer chooses to show them; a Stale Station is not silent.
+_Avoid_: No data (too close to the Area status "no current data"), dead, missing
+
 ## Views
 
 **Layout**:
@@ -84,7 +88,7 @@ How the watch picture is arranged on a screen: Board, Map or Split. A screen sho
 _Avoid_: Mode (Compact is a mode of the Board), view type, page
 
 **Board**:
-The Layout that lists Coastal areas north to south, each with its Stations, Readings, Thresholds and Forecasts.
+The Layout that lists Coastal areas along the coast, each with its Stations, Readings, Thresholds and Forecasts. Within a Coastal area, its own Stations are listed most urgent first: by Threshold level, then Fresh before Stale.
 _Avoid_: Chart (means a nautical chart or a hydrograph), dashboard, list, table
 
 **Map**:
