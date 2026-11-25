@@ -377,7 +377,7 @@ test.describe("An Area of responsibility from the link", () => {
     expect(await layoutOf(page)).toBe("split");
     await expect(page.locator("html")).toHaveClass(/text-xl/);
     await expect(page).toHaveURL(/#split&text=xl&area=-82\.9,27\.5,-82\.35,28\.05&name=Tampa%20Bay$/);
-    await expect(page.locator(".cw-marker")).toHaveCount(5);
+    await expect(page.locator(".cw-marker")).toHaveCount(38); // 5 tide gauges and 33 river gauges
     const box = await page.locator("#map").boundingBox();
     for (const el of await page.locator(".cw-marker").all()) {
       const b = await el.boundingBox();
@@ -393,5 +393,60 @@ test.describe("An Area of responsibility from the link", () => {
     await page.evaluate(h => { location.hash = h; }, `#board&${TAMPA}&name=Tampa%20Bay`);
     await expect(page.locator("header h1")).toContainText("Tampa Bay");
     await expect(page.locator("#boardPane .area")).toHaveCount(5);
+  });
+});
+
+test.describe("River gauges in an Area of responsibility from the link", () => {
+  // Mississippi Sound to Mobile Bay: wider than it is tall.
+  const GULF = "#board&area=-89.5,30.15,-87.6,31&name=Gulf%20Coast";
+  const openGulf = (page, opts = {}) => open(page, GULF, { moment: "gulf", ...opts });
+
+  test("a river gauge joins the Coastal area of its closest tide gauge", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openGulf(page);
+    await expect(area(page, "Bay Waveland Yacht Club").locator("#card-NWPS-KLNM6")).toContainText("Jourdan River at Kiln");
+    await expect(area(page, "Chickasaw Creek").locator("#card-NWPS-SARA1")).toContainText("Bayou Sara at Saraland");
+  });
+
+  test("a river gauge more than 40 miles from every tide gauge anchors its own Coastal area, named after it", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openGulf(page); // Merrill is 41 miles from Pascagoula NOAA Lab, its closest tide gauge
+    const own = area(page, "Pascagoula River at Merrill");
+    await expect(own.locator(".st")).toHaveCount(1);
+    await expect(own.locator("#card-NWPS-MRRM6")).toBeVisible();
+  });
+
+  test("in a rectangle wider than it is tall, Coastal areas run west to east", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openGulf(page);
+    const names = await page.locator("#boardPane .area").evaluateAll(els => els.map(e => e.dataset.area));
+    expect(names).toEqual(["Bay Waveland Yacht Club", "Pascagoula River at Merrill", "Pascagoula NOAA Lab", "Bayou La Batre Bridge",
+      "West Fowl River Bridge", "East Fowl River Bridge", "Dog River Bridge", "Dauphin Island", "Chickasaw Creek",
+      "Coast Guard Sector Mobile", "Mobile State Docks"]);
+  });
+
+  test("a river gauge above flood stage raises its Coastal area's Area status", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openGulf(page, { edit: riverAt("PGFM6", 17) }); // Graham Ferry: minor flood from 16 ft
+    await expect(area(page, "Pascagoula NOAA Lab").locator("h2")).toContainText("minor");
+    await expect(page.locator("#card-NWPS-PGFM6 .val")).toContainText("minor");
+  });
+
+  test("the explanation names the NWS offices of the river gauges shown", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openGulf(page);
+    await expect(page.locator("#offices")).toContainText("NWS Slidell: Bay Waveland Yacht Club to Pascagoula NOAA Lab");
+    await expect(page.locator("#offices")).toContainText("NWS Mobile");
+  });
+
+  test("tide gauges still show when the NWS river gauge list cannot be read", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await useFixtures(page, { moment: "gulf" });
+    await page.route(/nwps\/v1\/gauges\?/, route => route.abort()); // added last, so it answers first
+    await page.goto("/" + GULF);
+    await expect(page.locator("#updated")).toContainText("Refreshed");
+    await expect(page.locator("#banner")).toContainText("river gauges are missing");
+    await expect(page.locator("#boardPane .area")).toHaveCount(10);
+    await expect(page.locator("#boardPane [id^=card-NWPS-]")).toHaveCount(0);
   });
 });
