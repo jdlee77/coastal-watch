@@ -1,6 +1,6 @@
 # Coastal Watch
 
-A shared, real-time picture of coastal flooding conditions on the Oregon coast for ESF-2, the OEC3 watch floor and OR-Alert decision makers.
+A shared, real-time picture of coastal flooding conditions for any US coast, built first for the Oregon coast's ESF-2, OEC3 watch floor and OR-Alert decision makers.
 
 ## Hazards
 
@@ -14,12 +14,20 @@ _Avoid_: Storm tide (that is the total water level, not the difference), anomaly
 
 ## Places
 
+**Area of responsibility**:
+The whole stretch of coast one viewer has chosen to watch, such as one state's coast or one NWS office's coast. Every Station inside it is shown; the Coastal areas divide it up.
+_Avoid_: Area of concern, region, coverage, extent
+
 **Coastal area**:
-A stretch of coast, ordered north to south, that groups the Stations relevant to one community's flood risk: its tide gauge, its rivers and its nearest wave buoys. A Station may serve neighbouring Coastal areas.
+A stretch of coast within an Area of responsibility that groups the Stations relevant to one community's flood risk. Unless an Area definition names them, each tide gauge anchors one Coastal area, named after it, and every other Station joins the area of its closest tide gauge; a river gauge more than 40 miles from any tide gauge anchors its own Coastal area instead. Coastal areas are ordered along the coast: north to south, or west to east on a coast that runs east to west. A Station may serve neighbouring Coastal areas.
 _Avoid_: Basin, zone, region, sector
 
+**Area definition**:
+A saved, hand-made grouping of an Area of responsibility's Stations into named Coastal areas, used instead of the automatic grouping (for example the Oregon coast's eight areas).
+_Avoid_: Preset, profile, configuration
+
 **Nearby Station**:
-A Station shown in a Coastal area it does not sit in, because that area has none of its own of that kind (for example a buoy off Newport shown for Florence).
+A Station shown in a Coastal area it does not sit in, because that area has none of its own of that kind (for example a buoy off Newport shown for Florence). Automatically, the closest buoy within 100 miles.
 _Avoid_: Shared station, borrowed station
 
 **Area status**:
@@ -53,7 +61,7 @@ A Reading that two Threshold sources put at different Threshold levels. The high
 _Avoid_: Conflict, mismatch, disagreement
 
 **Threshold level**:
-One of the four NWS steps a Threshold can mark, in rising order: action, minor, moderate, major. Tide-gauge flood levels use only minor, moderate and major.
+One of the four NWS steps a Threshold can mark, in rising order: action, minor, moderate, major.
 _Avoid_: Severity, alert level, warning level
 
 ## Data age

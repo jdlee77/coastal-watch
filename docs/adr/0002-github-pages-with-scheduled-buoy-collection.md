@@ -7,3 +7,7 @@ Coastal Watch is a single page published on GitHub Pages; there is no server of 
 - Buoy readings can be up to about 10 minutes behind NDBC, plus GitHub's scheduling delays (often 5 to 20 minutes at busy times). Each Reading carries its own time, so a delay shows up as Stale, not as wrong data.
 - GitHub pauses scheduled jobs in a repository with no commits for 60 days. If that happens, wave buoys will turn Stale and then Offline on the page; re-enable the workflow from the repository's Actions tab.
 - If GitHub Actions is unavailable, tide gauges and rivers keep working because the browser fetches them directly.
+
+## Update, 25 November 2026
+
+For the any-state version (ADR 0003), the scheduled job collects NDBC's single national "latest readings" file instead of a fixed list of buoys. CDIP buoys are no longer collected: the research (docs/research/nationwide-discovery.md) found that CDIP's data server allows the page to read it directly. A buoy listed by both networks is shown once, using CDIP's own data.
