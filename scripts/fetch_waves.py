@@ -1,4 +1,4 @@
-"""Collect the latest wave Reading from every verified wave buoy.
+"""Collect the latest wave Reading from every wave buoy in the station list.
 
 NDBC does not allow web pages to read its files directly, so GitHub
 Actions runs this script on a schedule and publishes the result as
@@ -81,7 +81,7 @@ def cdip(station_id):
 def main(sensors_csv, out_path):
     out = {"collected": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), "stations": {}}
     with open(sensors_csv, newline="") as f:
-        rows = [r for r in csv.DictReader(f) if r["kind"] == "wave_buoy" and r["verified"] == "yes"]
+        rows = [r for r in csv.DictReader(f) if r["kind"] == "wave_buoy"]
     for r in rows:
         key = f'{r["network"]}:{r["station_id"]}'
         try:
