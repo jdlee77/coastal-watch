@@ -784,3 +784,22 @@ test.describe("Big areas and failed station lists", () => {
     await expect(page.locator("#card-NWPS-JNHF1")).toHaveCount(1);
   });
 });
+
+test.describe("Map labels", () => {
+  test("an Area of responsibility from the link has no Coastal area labels on the Map, only markers", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#map&area=-81.8,28.3,-80.4,30.5&name=First%20Coast", { moment: "florida" });
+    await expect(page.locator(".cw-marker")).toHaveCount(36);
+    await expect(page.locator(".cw-area-label")).toHaveCount(0);
+    // A Station's name still shows when it is selected
+    await marker(page, "CO-OPS:8720218").click();
+    await expect(page.locator(".leaflet-popup")).toContainText("Mayport (Bar Pilots Dock)");
+  });
+
+  test("Oregon keeps one label per Coastal area of its Area definition, and no Station names", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#map");
+    await expect(page.locator(".cw-area-label")).toHaveCount(AREAS.length);
+    await expect(page.locator(".cw-area-label", { hasText: "Garibaldi" })).toHaveCount(0); // a tide gauge, not an area
+  });
+});

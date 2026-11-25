@@ -852,9 +852,11 @@ function renderMap() {
     if (m.isPopupOpen()) m.setPopupContent(`<div class="popup">${stationHTML(x, false, true)}</div>`);
   }
   for (const [k, m] of markers) if (!seen.has(k)) { m.remove(); markers.delete(k); }
-  // Coastal area labels: just inland of the area's own Stations
+  // Coastal area labels, just inland of the area's own Stations: only for Coastal areas named in an
+  // Area definition. An automatically named Coastal area takes a Station's name, so labeling it only
+  // repeats Station names and clutters the Map (CONTEXT.md, "Map").
   for (const l of areaLabels) l.remove();
-  areaLabels = areas.map(a => {
+  areaLabels = (def && def.fromLink ? [] : areas).map(a => {
     const st = a.items.filter(x => !x.nearby).map(x => x.s);
     const lat = st.reduce((t, s) => t + +s.lat, 0) / st.length, lon = Math.max(...st.map(s => +s.lon)) + 0.12;
     return L.marker([lat, lon], { interactive: false, keyboard: false,
