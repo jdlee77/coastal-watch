@@ -630,3 +630,93 @@ test.describe("Tide gauges without a tidal datum; the NWS action level", () => {
     await expect(page.locator("#card-CO-OPS-9437540 .val .chip")).toHaveText(/below flood/i);
   });
 });
+
+test.describe("Choose area on the Map", () => {
+  const FLORIDA_AREA = "area=-81.8,28.3,-80.4,30.5";
+  // Screen position of a point on the map
+  const at = async (page, lat, lon) => {
+    const box = await page.locator("#map").boundingBox();
+    const p = await page.evaluate(([lat, lon]) => map.latLngToContainerPoint([lat, lon]), [lat, lon]);
+    return { x: box.x + p.x, y: box.y + p.y };
+  };
+  // Drag with the mouse from one corner to the other: around Jacksonville, leaving out Cape Canaveral
+  const dragJacksonville = async page => {
+    const a = await at(page, 30.45, -81.75), b = await at(page, 30.1, -81.35);
+    await page.mouse.move(a.x, a.y); await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 8 }); await page.mouse.up();
+  };
+  const areaNames = page => page.locator("#boardPane .area").evaluateAll(els => els.map(e => e.dataset.area));
+  const JAX = ["Mayport (Bar Pilots Dock)", "Dames Point", "Southbank Riverwalk, St Johns River", "I-295 Buckman Bridge"];
+
+  test("drawing a rectangle with the mouse, naming it and confirming writes the area and name into the link and loads it", async ({ page }) => {
+    await page.setViewportSize(WALL);
+    await open(page, `#split&${FLORIDA_AREA}`, { moment: "florida" });
+    await page.getByRole("button", { name: "Choose area" }).click();
+    await dragJacksonville(page);
+    await page.getByLabel("Area name (optional)").fill("Jacksonville");
+    await page.getByRole("button", { name: "Use this area" }).click();
+    await expect(page).toHaveURL(/#split&area=-81\.7\d*,30\.\d+,-81\.3\d*,30\.4\d*&name=Jacksonville$/);
+    await expect(page.locator("header h1")).toContainText("Jacksonville");
+    await expect.poll(() => areaNames(page)).toEqual(expect.arrayContaining(JAX));
+    await expect(area(page, "Trident Pier, Port Canaveral")).toHaveCount(0);
+  });
+
+  test("cancelling leaves the link and the view unchanged", async ({ page }) => {
+    await page.setViewportSize(WALL);
+    await open(page, `#split&${FLORIDA_AREA}&name=First%20Coast`, { moment: "florida" });
+    const before = await areaNames(page);
+    const url = page.url();
+    await page.getByRole("button", { name: "Choose area" }).click();
+    await dragJacksonville(page);
+    await page.getByLabel("Area name (optional)").fill("Jacksonville");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.locator("#areaPanel")).toBeHidden();
+    await expect(page.locator("#map .leaflet-overlay-pane path")).toHaveCount(0); // the rectangle is gone
+    expect(page.url()).toBe(url);
+    await expect(page.locator("header h1")).toContainText("First Coast");
+    expect(await areaNames(page)).toEqual(before);
+    // Escape cancels too, before anything is drawn
+    await page.getByRole("button", { name: "Choose area" }).click();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#areaPanel")).toBeHidden();
+    expect(page.url()).toBe(url);
+  });
+
+  test("the Layout and text size stay in the link after choosing an area", async ({ page }) => {
+    await page.setViewportSize(WALL);
+    await open(page, `#split&text=xl&${FLORIDA_AREA}`, { moment: "florida" });
+    await page.getByRole("button", { name: "Choose area" }).click();
+    await dragJacksonville(page);
+    await page.getByRole("button", { name: "Use this area" }).click(); // no name
+    await expect(page).toHaveURL(/#split&text=xl&area=[-\d.,]+$/);
+    expect(await layoutOf(page)).toBe("split");
+    await expect(page.locator("html")).toHaveClass(/text-xl/);
+    await expect(page.locator("header h1")).toContainText("Custom area");
+  });
+
+  test.describe("on a phone", () => {
+    test.use({ hasTouch: true, isMobile: true, viewport: PHONE });
+
+    test("the control is reached from the Map Layout and works by touch", async ({ page }) => {
+      await open(page, `#board&${FLORIDA_AREA}`, { moment: "florida" });
+      await expect(page.getByRole("button", { name: "Choose area" })).toHaveCount(0); // the Board has no map
+      await page.locator("#layoutToggle").tap();
+      expect(await layoutOf(page)).toBe("map");
+      await page.getByRole("button", { name: "Choose area" }).tap();
+      // A finger drag, sent as real touch input through the browser
+      const a = await at(page, 30.45, -81.75), b = await at(page, 30.1, -81.35);
+      const cdp = await page.context().newCDPSession(page);
+      const touch = (type, p) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: p ? [{ x: p.x, y: p.y }] : [] });
+      await touch("touchStart", a);
+      for (let i = 1; i <= 8; i++) await touch("touchMove", { x: a.x + (b.x - a.x) * i / 8, y: a.y + (b.y - a.y) * i / 8 });
+      await touch("touchEnd");
+      await page.getByLabel("Area name (optional)").tap(); // as a person would: tap the field, then type
+      await page.keyboard.type("Jax");
+      await page.getByRole("button", { name: "Use this area" }).tap();
+      await expect(page).toHaveURL(/#map&area=[-\d.,]+&name=Jax$/);
+      await expect(page.locator("header h1")).toContainText("Jax");
+      await expect(page.locator(".cw-marker[data-station='CO-OPS:8720218']")).toHaveCount(1); // Mayport
+      await expect(page.locator(".cw-marker[data-station='CO-OPS:8721604']")).toHaveCount(0); // Trident Pier left out
+    });
+  });
+});
