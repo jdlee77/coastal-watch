@@ -1,6 +1,6 @@
 # Coastal Watch
 
-A shared, real-time picture of coastal flooding conditions on the Oregon coast for ESF-2, the OEC3 watch floor and OR-Alert decision makers.
+A shared, real-time picture of coastal flooding conditions for any US coast, built first for the Oregon coast's ESF-2, OEC3 watch floor and OR-Alert decision makers.
 
 ## Hazards
 
@@ -19,8 +19,12 @@ The whole stretch of coast one viewer has chosen to watch, such as one state's c
 _Avoid_: Area of concern, region, coverage, extent
 
 **Coastal area**:
-A stretch of coast, ordered north to south, that groups the Stations relevant to one community's flood risk: its tide gauge, its rivers and its nearest wave buoys. A Station may serve neighbouring Coastal areas.
+A stretch of coast within an Area of responsibility that groups the Stations relevant to one community's flood risk. Unless an Area definition names them, each tide gauge anchors one Coastal area, named after it, and every other Station joins the area of its closest tide gauge. Coastal areas are ordered along the coast: north to south, or west to east on a coast that runs east to west. A Station may serve neighbouring Coastal areas.
 _Avoid_: Basin, zone, region, sector
+
+**Area definition**:
+A saved, hand-made grouping of an Area of responsibility's Stations into named Coastal areas, used instead of the automatic grouping (for example the Oregon coast's eight areas).
+_Avoid_: Preset, profile, configuration
 
 **Nearby Station**:
 A Station shown in a Coastal area it does not sit in, because that area has none of its own of that kind (for example a buoy off Newport shown for Florence).
