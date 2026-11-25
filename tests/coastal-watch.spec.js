@@ -154,7 +154,7 @@ test.describe("The Map", () => {
     await open(page, "#map", { edit: riverAt("TLMO3", 20) }); // Wilson River above major (19 ft)
     await expect(marker(page, "USGS:14301500")).toHaveAttribute("data-state", "major");
     await expect(marker(page, "USGS:14301500")).toHaveAttribute("aria-label", /major/);
-    await expect(marker(page, "CO-OPS:9437540")).toHaveAttribute("data-state", "nothr"); // Garibaldi: no Threshold
+    await expect(marker(page, "CO-OPS:9437540")).toHaveAttribute("data-state", "action"); // Garibaldi: NWS action level only
     await expect(marker(page, "NDBC:46050")).toHaveAttribute("data-state", "nothr");    // waves: no Threshold
   });
 
@@ -571,5 +571,62 @@ test.describe("NDBC buoys nationwide, from the collected wave file", () => {
     await open(page, "#board");
     for (const id of ["46029", "46089", "46050", "46015"]) await expect(page.locator(`#card-NDBC-${id} .val`)).toContainText("ft");
     for (const id of ["46243", "46248", "46229"]) await expect(page.locator(`[data-key='NDBC:${id}']`)).toHaveCount(0);
+  });
+});
+
+test.describe("Tide gauges without a tidal datum; the NWS action level", () => {
+  const DULUTH = "#board&area=-92.35,46.55,-91.85,46.85&name=Duluth"; // Lake Superior: Duluth gauge, Nemadji River
+  const FLORIDA = "#board&area=-81.8,28.3,-80.4,30.5&name=First%20Coast";
+  const noMLLW = id => (key, j) => { if (key === `mdapi-${id}-datums.json`) j.datums = j.datums.filter(d => d.name !== "MLLW"); return j; };
+
+  test("a Great Lakes tide gauge is left out, with a note saying how many and why", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, DULUTH, { moment: "duluth" });
+    await expect(page.locator("[data-key='CO-OPS:9099064']")).toHaveCount(0);
+    await expect(page.locator("#leftOut")).toHaveText(/^1 tide gauge is left out: .*no Surge and no MLLW reading/);
+  });
+
+  test("a river gauge in the same rectangle still shows, with a marker", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, DULUTH.replace("#board", "#map"), { moment: "duluth" });
+    await expect(page.locator(".cw-marker")).toHaveCount(1);
+    await expect(marker(page, "NWPS:SOSW3")).toHaveAttribute("data-kind", "river_gage");
+    await expect(marker(page, "CO-OPS:9099064")).toHaveCount(0);
+  });
+
+  test("times stay in the area's own zone when its only tide gauge is left out", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, DULUTH, { moment: "duluth" });
+    await expect(page.locator("#card-NWPS-SOSW3 .time")).toHaveText(/^\d\d:\d\d CST \(/);
+  });
+
+  test("a tidal station with no MLLW datum is left out the same way", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, FLORIDA, { moment: "florida", edit: noMLLW("8720219") }); // Dames Point
+    await expect(area(page, "Dames Point")).toHaveCount(0);
+    await expect(page.locator("[data-key='CO-OPS:8720219']")).toHaveCount(0);
+    await expect(page.locator("#leftOut")).toHaveText(/^1 tide gauge is left out/);
+    await expect(page.locator("#card-CO-OPS-8720218")).toBeVisible(); // Mayport still shows
+  });
+
+  test("no note when nothing is left out", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, FLORIDA, { moment: "florida" });
+    await expect(page.locator("#leftOut")).toHaveCount(0);
+  });
+
+  test("a tide gauge with a published NWS action level shows action when its Reading passes it", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board"); // Garibaldi: NWS action 14.27 ft station datum = 10.3 ft MLLW; Reading 11.4 ft
+    const card = page.locator("#card-CO-OPS-9437540");
+    await expect(card.locator(".val")).toContainText("11.4 ft");
+    await expect(card.locator(".val .chip")).toHaveText(/action/i);
+    await expect(card).toContainText("action 10.3 ft");
+  });
+
+  test("the same gauge below its action level shows below flood", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board", { edit: tideAt("9437540", 9.0) });
+    await expect(page.locator("#card-CO-OPS-9437540 .val .chip")).toHaveText(/below flood/i);
   });
 });
