@@ -1,0 +1,7 @@
+{
+  "name": "Oregon coast",
+  "stations": "data/sensors.csv",
+  "bbox": [-125.9, 42.0, -123.2, 46.4],
+  "time_zone": "America/Los_Angeles",
+  "nws_offices": { "PQR": "NWS Portland", "MFR": "NWS Medford", "PDT": "NWS Pendleton" }
+}

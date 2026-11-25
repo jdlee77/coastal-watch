@@ -120,7 +120,7 @@ test.describe("Text size", () => {
 });
 
 test.describe("The Map", () => {
-  test("shows every verified Station once, and no unverified Station", async ({ page }) => {
+  test("shows every Station once, and none that is not in the station list", async ({ page }) => {
     await page.setViewportSize(DESK);
     await open(page, "#map");
     await expect(page.locator(".cw-marker")).toHaveCount(24);
@@ -302,5 +302,40 @@ test.describe("The Board (unchanged rules)", () => {
     await open(page, "#board", { edit: riverAt("TLMO3", 20) });
     await page.getByRole("button", { name: "Compact" }).click();
     await expect(page.locator("#boardPane .area").first()).toHaveAttribute("data-area", "Tillamook Bay");
+  });
+});
+
+test.describe("Oregon as an Area definition", () => {
+  const officeOf = (lid, abbreviation, name) => (key, j) => { if (key === `nwps-${lid}.json`) j.wfo = { abbreviation, name }; return j; };
+
+  test("the header names the Area of responsibility from its Area definition", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board");
+    await expect(page.locator("header h1")).toContainText("Oregon coast");
+  });
+
+  test("every time shows its zone, in the area's local time", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board");
+    const card = page.locator("#card-CO-OPS-9439040");
+    await expect(card.locator(".time")).toHaveText(/^\d\d:\d\d PST \(/); // 25 Nov: standard time
+    await expect(card).toContainText(/Next high tide \(predicted\): .* PST/);
+    await expect(page.locator("#updated")).toContainText(/Refreshed \d\d:\d\d PST/);
+  });
+
+  test("the Threshold source explanation names the NWS offices of the Stations shown, and the areas each covers", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board");
+    const offices = page.locator("#offices");
+    await expect(offices).toContainText("NWS Portland: Columbia River mouth to Florence");
+    await expect(offices).toContainText("NWS Medford: Reedsport to Port Orford / Gold Beach");
+  });
+
+  test("office coverage follows the Stations, not a fixed list", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board", { edit: officeOf("MPLO3", "MFR", "Medford") });
+    const offices = page.locator("#offices");
+    await expect(offices).toContainText("NWS Portland: Columbia River mouth to Newport");
+    await expect(offices).toContainText("NWS Medford: Florence to Port Orford / Gold Beach");
   });
 });

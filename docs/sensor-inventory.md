@@ -27,7 +27,7 @@ Data: https://www.ndbc.noaa.gov (real-time text files per station).
 
 Wave height, direction, period and spectrum, which are the inputs for runup and overtopping.
 
-- PacWave South off Newport: CDIP 277, 278, 280. **Not in CDIP real-time data as of 25 Nov 2026**; marked unverified.
+- PacWave South off Newport: CDIP 277, 278, 280. **Not in CDIP real-time data as of 25 Nov 2026**, so they were removed from the station list (they had no location and could never report).
 - Live Oregon CDIP stations as of 25 Nov 2026: 162 Clatsop Spit, 179 Astoria Canyon, 139 Umpqua Offshore
 
 Data: https://cdip.ucsd.edu. PacWave also runs FLOATr, Sofar Spotter and Nexsens buoys.

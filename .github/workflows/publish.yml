@@ -33,6 +33,7 @@ jobs:
           cp index.html site/
           cp -r vendor site/
           cp data/sensors.csv site/data/
+          cp -r data/areas site/data/
           python3 scripts/fetch_waves.py data/sensors.csv site/data/waves.json
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

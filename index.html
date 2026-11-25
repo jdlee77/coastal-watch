@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Coastal Watch</title>
-<meta name="description" content="Live Oregon coast compound flooding picture: tide gauges, coastal rivers and wave buoys by coastal area.">
+<meta name="description" content="Live coastal compound flooding picture: tide gauges, coastal rivers and wave buoys by coastal area.">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
 :root {
@@ -129,7 +129,7 @@ footer a { color: inherit; }
 </head>
 <body>
 <header>
-  <h1>Coastal Watch <span class="kind">Oregon coast</span></h1>
+  <h1>Coastal Watch <span class="kind" id="areaName"></span></h1>
   <span class="updated" id="updated">Loading…</span>
   <span class="spacer"></span>
   <span class="group" id="layoutGroup" role="group" aria-label="Layout">
@@ -153,13 +153,14 @@ footer a { color: inherit; }
   <summary>Flood level sources: what the <span class="chip src nws">NWS</span> and <span class="chip src nos">NOAA</span> tags mean</summary>
   <dl>
     <dt><span class="chip src nws">NWS</span> NWS forecast office flood levels</dt>
-    <dd>Set locally by the National Weather Service office for that stretch of coast: <b>NWS Portland</b> from Astoria to Florence,
-        <b>NWS Medford</b> from Reedsport south. Each gauge names its office. These are the levels the office uses when it issues Coastal Flood
-        Advisories and Warnings, and the flood stages on NWS river hydrographs. Rivers have NWS levels only.</dd>
+    <dd>Set locally by the National Weather Service office for that stretch of coast. Each gauge names its office.
+        These are the levels the office uses when it issues Coastal Flood Advisories and Warnings, and the flood stages
+        on NWS river hydrographs. Rivers have NWS levels only.
+        <ul id="offices"></ul></dd>
     <dt><span class="chip src nos">NOAA</span> NOAA derived flood levels</dt>
     <dd>Calculated by NOAA's National Ocean Service with one nationwide formula from each tide gauge's tide range
         (NOAA Technical Report NOS CO-OPS 086, 2018). Used in NOAA's high-tide flooding reports and outlooks. No forecast office
-        sets them, and on the Oregon coast they are usually <b>lower</b> than the NWS levels, so they turn orange sooner.</dd>
+        sets them. Where they are <b>lower</b> than the NWS levels (as on most of the Oregon coast), they turn orange sooner.</dd>
     <dt><span class="chip differ">sources differ</span></dt>
     <dd>The two sources put the same Reading at different levels. The color shown is the higher of the two, so neither agency's
         level is hidden, and the chip names the source it came from. Before acting, confirm with the forecast office named
@@ -172,7 +173,7 @@ footer a { color: inherit; }
 <main id="areas"></main>
 <footer>
   Readings from NOAA CO-OPS, NOAA NDBC, Scripps CDIP, USGS (via NWS NWPS). Thresholds are the operators' published levels.
-  Tide water levels are feet above MLLW; river levels are gage stage in feet. Times are Pacific.
+  Tide water levels are feet above MLLW; river levels are gage stage in feet. Times are local to the area, with the zone shown.
   Not an official warning product. For tsunami, follow the <a href="https://www.tsunami.gov/">National Tsunami Warning Center</a>.
   Background map: <a href="https://www.usgs.gov/programs/national-geospatial-program/national-map">USGS The National Map</a>.
 </footer>
@@ -190,9 +191,13 @@ const KIND_LABEL = { tide_gauge: "Tide gauge", river_gage: "River", wave_buoy: "
 const KIND_ORDER = { tide_gauge: 0, river_gage: 1, wave_buoy: 2 };
 const REFRESH_MS = 5 * 60 * 1000;
 
-const PT = "America/Los_Angeles";
-const fmtTime = new Intl.DateTimeFormat("en-US", { timeZone: PT, hour: "2-digit", minute: "2-digit", hour12: false });
-const fmtDayTime = new Intl.DateTimeFormat("en-US", { timeZone: PT, weekday: "short", hour: "numeric", minute: "2-digit" });
+// Times are shown in the Area of responsibility's local time, with the zone written out.
+let fmtTime, fmtDayTime;
+function setTimeZone(tz) {
+  fmtTime = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZoneName: "short" });
+  fmtDayTime = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+}
+setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 function ageMin(t) { return (Date.now() - t.getTime()) / 60000; }
 function freshness(t, network) {
@@ -226,13 +231,32 @@ async function getJSON(url) {
   if (!r.ok) throw new Error(r.status + " " + r.statusText);
   return r.json();
 }
-async function loadStations() {
-  const text = await (await fetch("data/sensors.csv", { cache: "no-store" })).text();
+// ---- Area definition ---------------------------------------------------
+// A saved, hand-made grouping of Stations into named Coastal areas (CONTEXT.md).
+// The page opens the Oregon coast's Area definition.
+const AREA_DEFINITION = "data/areas/oregon.json";
+let def = null;
+async function loadAreaDefinition() {
+  const d = await getJSON(AREA_DEFINITION);
+  const text = await (await fetch(d.stations, { cache: "no-store" })).text();
   const [head, ...lines] = text.trim().split(/\r?\n/);
   const cols = head.split(",");
-  // sensors.csv has no quoted fields; keep it that way (no commas inside values).
-  return lines.map(l => Object.fromEntries(l.split(",").map((v, i) => [cols[i], v])))
-              .filter(s => s.verified === "yes"); // unverified IDs are never used
+  // Station lists have no quoted fields; keep it that way (no commas inside values).
+  const rows = lines.map(l => Object.fromEntries(l.split(",").map((v, i) => [cols[i], v])));
+  // Every Station is put in one shape, the same one discovered Stations will use.
+  const stations = rows.map(r => ({
+    network: r.network, operator: r.operator, station_id: r.station_id, nws_id: r.nws_id, kind: r.kind,
+    name: r.name, lat: +r.lat, lon: +r.lon, time_zone: r.time_zone || d.time_zone,
+    office: d.nws_offices[r.nws_office] || null, // river offices come from NWPS with each Reading
+    area: r.area, area_order: +r.area_order, also_serves: (r.also_serves || "").split(";").filter(Boolean),
+  }));
+  return { name: d.name, bbox: d.bbox, stations };
+}
+// The area's time zone: the one most of its Stations use.
+function areaTimeZone(stations) {
+  const n = new Map();
+  for (const s of stations) if (s.time_zone) n.set(s.time_zone, (n.get(s.time_zone) || 0) + 1);
+  return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] || Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 const ymd = d => d.toISOString().slice(0, 10).replace(/-/g, "");
 const coopsTime = s => new Date(s.replace(" ", "T") + "Z");
@@ -242,7 +266,6 @@ const metaCache = {};
 
 // Threshold sources. Both are shown side by side so the analyst can confirm
 // with each forecast office which levels they are working from.
-const OFFICES = { PQR: "NWS Portland", MFR: "NWS Medford", PDT: "NWS Pendleton" };
 const SOURCES = {
   nws: { tag: "NWS", title: "NWS forecast office flood level" },
   nos: { tag: "NOAA", title: "NOAA derived flood level (national formula)" },
@@ -283,7 +306,7 @@ async function tideGauge(s) {
     getJSON(`${COOPS}&station=${id}&product=predictions&interval=hilo&begin_date=${b}&end_date=${e}`),
     tideThresholds(id),
   ]);
-  const office = OFFICES[s.nws_office] || "the NWS forecast office";
+  const office = s.office || "the NWS forecast office";
   const o = obs.data && obs.data[0];
   if (!o) throw new Error(obs.error ? obs.error.message : "no data");
   const t = coopsTime(o.t), v = parseFloat(o.v);
@@ -316,7 +339,7 @@ async function riverGage(s) {
     fc = { t: new Date(crest.validTime), v: crest.primary, label: "Forecast crest (NWS)",
            j: judge(crest.primary, [{ key: "nws", thr: any ? thr : null }]) };
   }
-  const office = g.wfo && g.wfo.name ? "NWS " + g.wfo.name : "the NWS forecast office";
+  const office = g.wfo && g.wfo.name ? "NWS " + g.wfo.name : s.office || "the NWS forecast office";
   const j = judge(v, [{ key: "nws", thr: any ? thr : null }]);
   return { t, value: v, display: ft(v), office, j, level: j.level, forecast: fc };
 }
@@ -407,7 +430,7 @@ function stationHTML(x, top, inPopup) {
     sub.push(esc(`${r.forecast.label}: ${ft(r.forecast.v)} ${fmtDayTime.format(r.forecast.t)}`) + fl);
   }
   const time = r.error ? `<span class="err">Could not get a Reading: ${esc(r.error)}</span>`
-             : `<span class="time ${r.fresh !== "fresh" ? "stale" : ""}">${fmtTime.format(r.t)} PT (${ageText(r.t)})${r.fresh === "offline" ? " · offline" : ""}</span>`;
+             : `<span class="time ${r.fresh !== "fresh" ? "stale" : ""}">${fmtTime.format(r.t)} (${ageText(r.t)})${r.fresh === "offline" ? " · offline" : ""}</span>`;
   return `<div class="${cls}"${idAttr} data-key="${esc(key)}">
     <div class="name">${esc(s.name)} <span class="kind">${KIND_LABEL[s.kind]}${x.nearby || inPopup ? " · " + (x.nearby ? "from " : "") + esc(s.area) : ""}</span> ${tags}</div>
     <div class="val">${r.error ? "–" : esc(r.display)} ${levelChip(r)}</div>
@@ -620,12 +643,33 @@ function legend() {
     ` <span class="full">· <b>stale</b> = late by more than twice the usual reporting interval; <b>offline</b> = over 24 h old</span>`;
 }
 
+// Which NWS office covers which Coastal areas, from the offices of the Stations shown.
+function renderOffices(stations, readings) {
+  const cover = new Map();
+  for (const s of stations) {
+    const r = readings.get(s), o = (r && r.office) || s.office;
+    if (!o || !o.startsWith("NWS ")) continue;
+    const a = areas.find(a => a.name === s.area); if (!a) continue;
+    const c = cover.get(o) || { first: a, last: a };
+    if (a.order < c.first.order) c.first = a;
+    if (a.order > c.last.order) c.last = a;
+    cover.set(o, c);
+  }
+  document.getElementById("offices").innerHTML = [...cover].sort((x, y) => x[1].first.order - y[1].first.order)
+    .map(([o, c]) => `<li><b>${esc(o)}</b>: ${esc(c.first.name)}${c.last !== c.first ? " to " + esc(c.last.name) : ""}</li>`).join("");
+}
+
 let busy = false;
 async function refresh() {
   if (busy) return; busy = true;
   document.getElementById("updated").textContent = "Refreshing…";
   try {
-    const stations = await loadStations();
+    if (!def) {
+      def = await loadAreaDefinition();
+      setTimeZone(areaTimeZone(def.stations));
+      document.getElementById("areaName").textContent = def.name;
+    }
+    const stations = def.stations;
     try { wavesCache = await getJSON("data/waves.json"); } catch (e) { wavesCache = { stations: {} }; }
     const readings = new Map(await Promise.all(stations.map(async s => [s, await readStation(s)])));
     const byArea = new Map();
@@ -634,15 +678,16 @@ async function refresh() {
     }
     for (const s of stations) {
       byArea.get(s.area).items.push({ s, r: readings.get(s), nearby: false });
-      for (const other of (s.also_serves || "").split(";").filter(Boolean))
+      for (const other of s.also_serves)
         if (byArea.has(other)) byArea.get(other).items.push({ s, r: readings.get(s), nearby: true });
     }
     areas = [...byArea.values()].sort((a, b) => a.order - b.order);
+    renderOffices(stations, readings);
     for (const a of areas) a.items.sort((x, y) => x.nearby - y.nearby || KIND_ORDER[x.s.kind] - KIND_ORDER[y.s.kind]);
     const failed = [...readings.values()].filter(r => r.error).length;
     document.getElementById("banner").innerHTML = failed
       ? `<div class="banner">${failed} of ${stations.length} Stations could not be read this time. They show “no data”.</div>` : "";
-    document.getElementById("updated").textContent = "Refreshed " + fmtTime.format(new Date()) + " PT · every 5 min";
+    document.getElementById("updated").textContent = "Refreshed " + fmtTime.format(new Date()) + " · every 5 min";
     render();
   } catch (e) {
     document.getElementById("updated").innerHTML = `<span class="err">Refresh failed: ${esc(e.message)}</span>`;

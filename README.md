@@ -20,7 +20,7 @@ No single feed covers coastal flooding. The dangerous events are **compound**: h
 | Surface currents | HF radar | OSU | Coastal coverage |
 | Shoreline change | Beach profile monitoring | DOGAMI / OSU | Repeat GPS surveys, not real-time |
 
-The full list is in [`docs/sensor-inventory.md`](docs/sensor-inventory.md) and the machine-readable station list is in [`data/sensors.csv`](data/sensors.csv).
+The full list is in [`docs/sensor-inventory.md`](docs/sensor-inventory.md) and the machine-readable station list is in [`data/sensors.csv`](data/sensors.csv). The Oregon coast's Area definition, [`data/areas/oregon.json`](data/areas/oregon.json), names that list and holds the area's name, time zone and NWS office names.
 
 ## Known gaps
 

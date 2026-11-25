@@ -1,6 +1,6 @@
 // Records the live feed responses the page makes into tests/fixtures.
 // Run this only when you want new saved data (for example after adding a Station):
-//   1. serve the built site (index.html, data/sensors.csv, data/waves.json) on http://localhost:8765
+//   1. serve the built site (index.html, data/areas, data/sensors.csv, data/waves.json) on http://localhost:8765
 //   2. npm run record-fixtures
 // Tide predictions are trimmed to the hours the page uses, to keep the files small.
 const fs = require("fs");
