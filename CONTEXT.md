@@ -68,3 +68,25 @@ _Avoid_: Late, delayed
 **Offline**:
 A Station whose latest Reading is more than 24 hours old.
 _Avoid_: Down, dead, out of service
+
+## Views
+
+**Layout**:
+How the watch picture is arranged on a screen: Board, Map or Split. A screen shows one Layout at a time.
+_Avoid_: Mode (Compact is a mode of the Board), view type, page
+
+**Board**:
+The Layout that lists Coastal areas north to south, each with its Stations, Readings, Thresholds and Forecasts.
+_Avoid_: Chart (means a nautical chart or a hydrograph), dashboard, list, table
+
+**Map**:
+The Layout that places every Station once at its real location, shaped by kind and colored by Threshold level, with Coastal areas labeled along the coast.
+_Avoid_: Chart, GIS view
+
+**Split**:
+The Layout that shows the Map and the Board side by side on one screen, built for the watch-floor video wall; selecting a Station in one half points to it in the other.
+_Avoid_: Wall mode, dual view
+
+**Compact**:
+A mode of the Board that shows one line per Coastal area, worst Area status first, with only its most urgent Reading.
+_Avoid_: Mobile mode, summary view
