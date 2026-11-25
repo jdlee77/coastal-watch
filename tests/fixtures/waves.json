@@ -1,0 +1,61 @@
+{
+ "collected": "2026-11-25T20:26:17.722526Z",
+ "stations": {
+  "NDBC:46029": {
+   "reading": {
+    "time": "2026-11-25T19:50:00Z",
+    "height_ft": 15.1,
+    "period_s": 13.0,
+    "direction_deg": 194.0
+   }
+  },
+  "CDIP:162": {
+   "reading": {
+    "time": "2026-11-25T19:30:00Z",
+    "height_ft": 15.3,
+    "period_s": 14.3,
+    "direction_deg": 253
+   }
+  },
+  "CDIP:179": {
+   "reading": {
+    "time": "2026-11-25T19:30:00Z",
+    "height_ft": 16.7,
+    "period_s": 15.4,
+    "direction_deg": 261
+   }
+  },
+  "NDBC:46089": {
+   "reading": {
+    "time": "2026-11-25T19:50:00Z",
+    "height_ft": 17.7,
+    "period_s": 13.0,
+    "direction_deg": 221.0
+   }
+  },
+  "NDBC:46050": {
+   "reading": {
+    "time": "2026-11-25T19:50:00Z",
+    "height_ft": 18.4,
+    "period_s": 15.0,
+    "direction_deg": 244.0
+   }
+  },
+  "CDIP:139": {
+   "reading": {
+    "time": "2026-11-25T19:30:00Z",
+    "height_ft": 17.9,
+    "period_s": 16.7,
+    "direction_deg": 271
+   }
+  },
+  "NDBC:46015": {
+   "reading": {
+    "time": "2026-11-25T19:50:00Z",
+    "height_ft": 16.7,
+    "period_s": 17.0,
+    "direction_deg": 230.0
+   }
+  }
+ }
+}
