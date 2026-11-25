@@ -211,6 +211,7 @@ footer a { color: inherit; }
 </section>
 </div>
 <script src="vendor/leaflet/leaflet.js"></script>
+<script src="coastal-areas.js"></script>
 <script>
 "use strict";
 // ---- Domain rules (see CONTEXT.md) -------------------------------------
@@ -357,9 +358,11 @@ async function loadAreaDefinition() {
     network: r.network, operator: r.operator, station_id: r.station_id, nws_id: r.nws_id, kind: r.kind,
     name: r.name, lat: +r.lat, lon: +r.lon, time_zone: r.time_zone || d.time_zone,
     office: d.nws_offices[r.nws_office] || null, // river offices come from NWPS with each Reading
-    area: r.area, area_order: +r.area_order, also_serves: (r.also_serves || "").split(";").filter(Boolean),
   }));
-  return { name: d.name, bbox: d.bbox, stations };
+  // The hand-made grouping: each Station's Coastal area, its order and the areas it also serves as a Nearby Station.
+  const definition = new Map(stations.map((s, i) => [s, { area: rows[i].area, order: +rows[i].area_order,
+    alsoServes: (rows[i].also_serves || "").split(";").filter(Boolean) }]));
+  return { name: d.name, bbox: d.bbox, stations, definition };
 }
 // ---- Station discovery (ADR 0004) --------------------------------------
 // For an Area of responsibility given in the link, Stations are found from each
@@ -380,14 +383,6 @@ function coopsZone(st) {
   return Number.isInteger(h) ? "Etc/GMT" + (h <= 0 ? "+" : "-") + Math.abs(h) : null;
 }
 const inBox = (b, lat, lon) => lon >= b[0] && lat >= b[1] && lon <= b[2] && lat <= b[3];
-// Distance in miles between two points (great-circle).
-function miles(lat1, lon1, lat2, lon2) {
-  const r = Math.PI / 180, a = Math.sin((lat2 - lat1) * r / 2) ** 2 +
-    Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lon2 - lon1) * r / 2) ** 2;
-  return 3958.8 * 2 * Math.asin(Math.sqrt(a));
-}
-const NEARBY_BUOY_MI = 100; // a Coastal area without a buoy shows the closest one within this distance
-const RIVER_ANCHOR_MI = 40; // a river gauge farther than this from every tide gauge anchors its own Coastal area
 // NWS gauges in the rectangle (docs/research/nationwide-discovery.md §2; srid must be set).
 const nwpsSearch = b => `${NWPS_GAUGE.slice(0, -1)}?bbox.xmin=${b[0]}&bbox.ymin=${b[1]}&bbox.xmax=${b[2]}&bbox.ymax=${b[3]}&srid=EPSG_4326`;
 // A river gauge reports river stage (HG) or pool level (HP). NWS also tracks many tide
@@ -407,18 +402,18 @@ async function discoverArea(bbox, name, wavesOk = true) {
   const leftOut = inside.filter((st, i) => noDatum[i]).length;
   const tides = inside.filter((st, i) => !noDatum[i]).map(st => ({
     network: "CO-OPS", operator: "NOAA", station_id: st.id, nws_id: st.shefcode || "", kind: "tide_gauge",
-    name: st.name, lat: st.lat, lon: st.lng, time_zone: coopsZone(st), office: null, also_serves: [],
+    name: st.name, lat: st.lat, lon: st.lng, time_zone: coopsZone(st), office: null,
   }));
   const tideIds = new Set(tides.map(s => s.nws_id).filter(Boolean));
   const rivers = ((nwps && nwps.gauges) || []).filter(g => isRiverGauge(g) && !tideIds.has(g.lid) && inBox(bbox, g.latitude, g.longitude)).map(g => ({
     // Found through NWS (NWPS), keyed by its NWS ID; the measuring operator (usually USGS) is not in the search.
     network: "NWPS", operator: "", station_id: g.lid, nws_id: g.lid, kind: "river_gage",
     name: g.name.trim(), lat: g.latitude, lon: g.longitude, time_zone: null,
-    office: g.wfo && g.wfo.name ? "NWS " + g.wfo.name : null, also_serves: [],
+    office: g.wfo && g.wfo.name ? "NWS " + g.wfo.name : null,
   }));
   const cdipBuoysHere = (cdip || []).filter(b => inBox(bbox, b.lat, b.lon)).map(b => ({
     network: "CDIP", operator: "Scripps", station_id: b.label.replace(/p1$/, ""), nws_id: "", kind: "wave_buoy",
-    name: b.name, lat: b.lat, lon: b.lon, time_zone: null, office: null, also_serves: [],
+    name: b.name, lat: b.lat, lon: b.lon, time_zone: null, office: null,
   }));
   // NDBC wave stations from the collected national file. About 50 of them are CDIP buoys under
   // their WMO ID; those are shown once, as CDIP (CDIP's own data).
@@ -427,43 +422,15 @@ async function discoverArea(bbox, name, wavesOk = true) {
     .filter(([key, w]) => key.startsWith("NDBC:") && w.lat != null && inBox(bbox, w.lat, w.lon) && !cdipWmo.has(key.slice(5).toUpperCase()))
     .map(([key, w]) => ({
       network: "NDBC", operator: "NOAA", station_id: key.slice(5), nws_id: "", kind: "wave_buoy",
-      name: w.name || "NDBC " + key.slice(5), lat: w.lat, lon: w.lon, time_zone: null, office: null, also_serves: [],
+      name: w.name || "NDBC " + key.slice(5), lat: w.lat, lon: w.lon, time_zone: null, office: null,
     }));
   const buoys = [...cdipBuoysHere, ...ndbcHere];
   // The NWS office for a tide gauge: from the NWS gauge with the same ID, where there is one.
   await Promise.all(tides.filter(s => s.nws_id).map(async s => {
     try { const g = await getJSON(NWPS_GAUGE + s.nws_id); if (g.wfo && g.wfo.name) s.office = "NWS " + g.wfo.name; } catch (e) { /* no NWS gauge */ }
   }));
-  // Each tide gauge anchors a Coastal area named after it. Each river gauge joins the
-  // area of its closest tide gauge, or anchors its own when every tide gauge is over 40 miles away.
-  const anchors = [...tides];
-  for (const s of tides) s.area = s.name;
-  for (const s of rivers) {
-    let best = null, d = Infinity;
-    for (const t of tides) { const m = miles(s.lat, s.lon, t.lat, t.lon); if (m < d) { d = m; best = t; } }
-    if (best && d <= RIVER_ANCHOR_MI) s.area = best.area;
-    else { s.area = s.name; anchors.push(s); }
-  }
-  // Coastal areas run along the coast: west to east in a rectangle wider than it is tall, otherwise north to south.
-  const midLat = (bbox[1] + bbox[3]) / 2;
-  const wide = miles(midLat, bbox[0], midLat, bbox[2]) > miles(bbox[1], bbox[0], bbox[3], bbox[0]);
-  // Each buoy joins the area of its closest tide gauge (with no tide gauge, its closest Coastal area).
-  const closest = (s, list) => list.reduce((best, t) => {
-    const d = miles(s.lat, s.lon, t.lat, t.lon); return d < best.d ? { t, d } : best; }, { t: null, d: Infinity });
-  for (const b of buoys) {
-    const c = closest(b, tides.length ? tides : anchors);
-    if (c.t) b.area = c.t.area; else { b.area = b.name; anchors.push(b); }
-  }
-  // A Coastal area with no buoy of its own shows the closest buoy within 100 miles as a Nearby Station.
-  for (const a of anchors) {
-    if (buoys.some(b => b.area === a.area)) continue;
-    const c = closest(a, buoys);
-    if (c.t && c.d <= NEARBY_BUOY_MI) c.t.also_serves.push(a.area);
-  }
-  anchors.sort(wide ? (a, b) => a.lon - b.lon : (a, b) => b.lat - a.lat);
-  const order = new Map(anchors.map((s, i) => [s.area, i + 1]));
+  // Grouping into Coastal areas is done by coastal-areas.js, for discovered and defined areas alike.
   const stations = [...tides, ...rivers, ...buoys];
-  for (const s of stations) s.area_order = order.get(s.area);
   return { name: name || "Custom area", linkName: name || "", bbox, stations, fromLink: true, missing, leftOut,
            // Left-out tide gauges still tell the area's time zone.
            time_zone: areaTimeZone(inside.map(st => ({ time_zone: coopsZone(st) }))) };
@@ -1060,21 +1027,18 @@ async function refresh() {
     if (!def || (def.missing && def.missing.length)) { // a missing station list is tried again at each refresh
       const h = parseHash();
       def = h.area ? await discoverArea(h.area, h.name, wavesOk) : await loadAreaDefinition();
+      // Coastal areas are worked out once per area, not at every refresh (coastal-areas.js).
+      def.coastalAreas = CoastalAreas.coastalAreas(def.stations, { rectangle: def.bbox, definition: def.definition });
+      for (const a of def.coastalAreas) for (const st of a.own) st.area = a.name;
       setTimeZone(def.time_zone || areaTimeZone(def.stations));
       document.getElementById("areaName").textContent = def.name;
     }
     const stations = def.stations;
     const readings = new Map(await Promise.all(stations.map(async s => [s, await readStation(s)])));
-    const byArea = new Map();
-    for (const s of stations) {
-      if (!byArea.has(s.area)) byArea.set(s.area, { name: s.area, order: +s.area_order, items: [] });
-    }
-    for (const s of stations) {
-      byArea.get(s.area).items.push({ s, r: readings.get(s), nearby: false });
-      for (const other of s.also_serves)
-        if (byArea.has(other)) byArea.get(other).items.push({ s, r: readings.get(s), nearby: true });
-    }
-    areas = [...byArea.values()].sort((a, b) => a.order - b.order);
+    areas = def.coastalAreas.map(a => ({ name: a.name, order: a.order, items: [
+      ...a.own.map(s => ({ s, r: readings.get(s), nearby: false })),
+      ...a.nearby.map(s => ({ s, r: readings.get(s), nearby: true })),
+    ] }));
     renderOffices(stations, readings);
     const n = def.leftOut || 0;
     document.getElementById("banner").innerHTML = (n
