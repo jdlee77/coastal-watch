@@ -1,0 +1,12 @@
+{
+  "name": "coastal-watch",
+  "private": true,
+  "description": "Oregon coast compound flooding watch picture",
+  "scripts": {
+    "test": "playwright test",
+    "record-fixtures": "node tests/record-fixtures.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

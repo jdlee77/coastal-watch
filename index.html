@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Coastal Watch</title>
 <meta name="description" content="Live Oregon coast compound flooding picture: tide gauges, coastal rivers and wave buoys by coastal area.">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
 :root {
   --bg: #f3f5f7; --card: #ffffff; --ink: #14202b; --muted: #5a6875; --line: #d6dde3;
@@ -16,10 +17,13 @@
 @media (prefers-color-scheme: dark) {
   :root { --bg: #0d141b; --card: #16212b; --ink: #e8eef3; --muted: #9aabba; --line: #2a3946;
           --normal: #4caf50; --nothr: #78909c; --nodata: #5f6b75; --nws: #64b5f6; --nos: #4db6ac; }
+  .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.75) contrast(.9); opacity: .8; }
 }
 * { box-sizing: border-box; }
+/* Text size scales everything sized in rem, including Map markers and labels */
+html { font-size: 16px; } html.text-l { font-size: 20px; } html.text-xl { font-size: 24px; }
 body { margin: 0; background: var(--bg); color: var(--ink);
-       font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+       font: 1rem/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 header { position: sticky; top: 0; z-index: 2; background: var(--card); border-bottom: 1px solid var(--line);
          padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 h1 { font-size: 1.25rem; margin: 0; }
@@ -28,6 +32,52 @@ h1 { font-size: 1.25rem; margin: 0; }
 button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line);
          background: var(--bg); color: var(--ink); cursor: pointer; }
 button[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+button:disabled { opacity: .5; cursor: default; }
+select { font: inherit; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.group { display: inline-flex; gap: 0; }
+.group button { border-radius: 0; margin-left: -1px; }
+.group button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+.group button:last-child { border-radius: 0 6px 6px 0; }
+#layoutToggle { display: none; }
+@media (max-width: 999px) { #layoutGroup { display: none; } #layoutToggle { display: inline-block; } }
+.note { margin: 8px 16px 0; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); font-size: .9rem; }
+.note:empty { display: none; }
+.linkbtn { font-size: .8rem; padding: 1px 8px; margin-left: 6px; }
+/* ---- Layouts ---- */
+body.layout-map, body.layout-split { height: 100vh; display: flex; flex-direction: column; }
+#layout { min-height: 0; }
+body.layout-map #layout, body.layout-split #layout { flex: 1; display: grid; }
+body.layout-board #mapPane { display: none; }
+body.layout-map #boardPane { display: none; }
+body.layout-map #layout { grid-template-columns: 1fr; }
+body.layout-split #layout { grid-template-columns: 40% 60%; }
+#mapPane { position: relative; min-height: 0; border-right: 1px solid var(--line); }
+#map { position: absolute; inset: 0; background: var(--bg); }
+body.layout-split #boardPane { overflow: auto; min-height: 0; }
+body.layout-split #explain, body.layout-split footer { display: none; }
+body.layout-split.compact main { grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: 8px; padding-bottom: 12px; }
+.hl { outline: 4px solid var(--nws); outline-offset: 2px; }
+.area.hl { outline-offset: -2px; }
+/* ---- Map ---- */
+.leaflet-container { font: inherit; background: var(--bg); }
+.leaflet-tile-pane { filter: grayscale(1) contrast(.85) brightness(1.08); opacity: .7; }
+.cw-marker svg { overflow: visible; display: block; }
+.cw-marker.pulse svg { animation: pulse 0.6s ease-in-out 4; }
+@keyframes pulse { 50% { transform: scale(1.8); } }
+.cw-area-label { font-weight: 700; font-size: .85rem; color: var(--ink); white-space: nowrap;
+                 text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 3px var(--bg); pointer-events: none; }
+.maplegend { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+             padding: 4px 10px; font-size: .8rem; max-width: 16rem; }
+.maplegend summary { cursor: pointer; font-weight: 600; }
+.maplegend .row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+.maplegend svg { flex: none; }
+.mapnote { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 500; background: var(--card);
+           border: 1px solid var(--minor); border-radius: 6px; padding: 3px 10px; font-size: .8rem; }
+.mapnote:empty { display: none; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--card); color: var(--ink); }
+.leaflet-popup-content { margin: 8px 10px; min-width: 16rem; font-size: 1rem; line-height: 1.4; }
+.leaflet-popup-content .st { padding: 0; border: 0; }
+.leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
 .legend { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px 0; font-size: .85rem; color: var(--muted); }
 main { padding: 12px 16px 32px; display: grid; gap: 12px;
        grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); }
@@ -82,9 +132,22 @@ footer a { color: inherit; }
   <h1>Coastal Watch <span class="kind">Oregon coast</span></h1>
   <span class="updated" id="updated">Loading…</span>
   <span class="spacer"></span>
+  <span class="group" id="layoutGroup" role="group" aria-label="Layout">
+    <button type="button" data-layout="board" aria-pressed="false">Board</button>
+    <button type="button" data-layout="map" aria-pressed="false">Map</button>
+    <button type="button" data-layout="split" aria-pressed="false">Split</button>
+  </span>
+  <button id="layoutToggle" type="button">Map</button>
+  <label>Text <select id="textsize" aria-label="Text size">
+    <option value="normal">Normal</option><option value="l">Large</option><option value="xl">Extra large</option>
+  </select></label>
   <button id="refresh" type="button">Refresh now</button>
   <button id="compact" type="button" aria-pressed="false">Compact</button>
 </header>
+<div class="note" id="note" role="status"></div>
+<div id="layout">
+<section id="mapPane" aria-label="Map"><div id="map"></div><div class="mapnote" id="mapnote"></div></section>
+<section id="boardPane" aria-label="Board">
 <div class="legend" id="legend"></div>
 <details class="explain" id="explain">
   <summary>Flood level sources: what the <span class="chip src nws">NWS</span> and <span class="chip src nos">NOAA</span> tags mean</summary>
@@ -111,7 +174,11 @@ footer a { color: inherit; }
   Readings from NOAA CO-OPS, NOAA NDBC, Scripps CDIP, USGS (via NWS NWPS). Thresholds are the operators' published levels.
   Tide water levels are feet above MLLW; river levels are gage stage in feet. Times are Pacific.
   Not an official warning product. For tsunami, follow the <a href="https://www.tsunami.gov/">National Tsunami Warning Center</a>.
+  Background map: <a href="https://www.usgs.gov/programs/national-geospatial-program/national-map">USGS The National Map</a>.
 </footer>
+</section>
+</div>
+<script src="vendor/leaflet/leaflet.js"></script>
 <script>
 "use strict";
 // ---- Domain rules (see CONTEXT.md) -------------------------------------
@@ -319,9 +386,14 @@ function thresholdLines(r) {
     return `${srcTag(s.key)} ${esc(who)}: ${esc(parts.join(" · "))} ft → ${chip(s.level, lvlText(s.level))}`;
   });
 }
-function stationHTML(x, top) {
-  const s = x.s, r = x.r;
+const keyOf = s => s.network + ":" + s.station_id;
+const cardId = key => "card-" + key.replace(/[^A-Za-z0-9]/g, "-");
+function stationHTML(x, top, inPopup) {
+  const s = x.s, r = x.r, key = keyOf(s);
   const cls = ["st", x.nearby ? "nearby" : "", top ? "top" : "", r.fresh ? "is-" + r.fresh : ""].join(" ");
+  const idAttr = !x.nearby && !inPopup ? ` id="${cardId(key)}"` : "";
+  const link = inPopup ? `<button type="button" class="linkbtn" data-open-board="${esc(key)}">Open on Board</button>`
+                       : `<button type="button" class="linkbtn" data-show-map="${esc(key)}">Show on map</button>`;
   const tags = [x.nearby ? chip("near", "nearby") : "", r.fresh === "stale" ? chip("stale", "stale") : "",
                 r.j && r.j.differ ? chip("differ", "sources differ") : ""].join(" ");
   let sub = [];
@@ -336,11 +408,11 @@ function stationHTML(x, top) {
   }
   const time = r.error ? `<span class="err">Could not get a Reading: ${esc(r.error)}</span>`
              : `<span class="time ${r.fresh !== "fresh" ? "stale" : ""}">${fmtTime.format(r.t)} PT (${ageText(r.t)})${r.fresh === "offline" ? " · offline" : ""}</span>`;
-  return `<div class="${cls}">
-    <div class="name">${esc(s.name)} <span class="kind">${KIND_LABEL[s.kind]}${x.nearby ? " · from " + esc(s.area) : ""}</span> ${tags}</div>
+  return `<div class="${cls}"${idAttr} data-key="${esc(key)}">
+    <div class="name">${esc(s.name)} <span class="kind">${KIND_LABEL[s.kind]}${x.nearby || inPopup ? " · " + (x.nearby ? "from " : "") + esc(s.area) : ""}</span> ${tags}</div>
     <div class="val">${r.error ? "–" : esc(r.display)} ${levelChip(r)}</div>
     ${sub.length ? `<div class="sub">${sub.join("<br>")}</div>` : ""}
-    <div class="sub">${time}</div>
+    <div class="sub">${time}${link}</div>
   </div>`;
 }
 // Most urgent Reading for the Compact view, from the area's own Stations when it has any.
@@ -350,19 +422,196 @@ function topOf(all) {
   return [...items].sort((a, b) => score(b) - score(a) || KIND_ORDER[a.s.kind] - KIND_ORDER[b.s.kind])[0];
 }
 
-let areas = [], compact = false;
+let areas = [], compact = false, layout = "board";
+const isCompact = () => compact || layout === "split"; // Split always shows the Board in Compact
+// Shared rules are computed once per render and read by both the Board and the Map.
 function render() {
   for (const a of areas) for (const x of a.items) x.r.fresh = x.r.t ? freshness(x.r.t, x.s.network) : "offline";
   for (const a of areas) a.status = areaStatus(a.items.filter(x => !x.nearby));
-  const list = compact ? [...areas].sort((a, b) => SORT[a.status.level] - SORT[b.status.level] || a.order - b.order) : areas;
+  renderBoard();
+  renderMap();
+}
+function renderBoard() {
+  const c = isCompact();
+  document.body.classList.toggle("compact", c);
+  const list = c ? [...areas].sort((a, b) => SORT[a.status.level] - SORT[b.status.level] || a.order - b.order) : areas;
   document.getElementById("areas").innerHTML = list.map(a => {
-    const top = compact ? topOf(a.items) : null;
+    const top = c ? topOf(a.items) : null;
     const st = a.status;
     const label = st.level === "nodata" ? "no current data" : st.level === "normal" ? "below flood" : st.level;
-    return `<section class="area"><h2>${esc(a.name)} ${st.stale ? chip("stale", "stale") : ""} ${chip(st.level, label)}</h2>
+    return `<section class="area" data-area="${esc(a.name)}"><h2>${esc(a.name)} ${st.stale ? chip("stale", "stale") : ""} ${chip(st.level, label)}</h2>
       ${a.items.map(x => stationHTML(x, x === top)).join("")}</section>`;
   }).join("");
 }
+
+// ---- Map ---------------------------------------------------------------
+const COLORS = () => { const cs = getComputedStyle(document.documentElement);
+  const v = n => cs.getPropertyValue("--" + n).trim(); return { normal: v("normal"), action: v("action"), minor: v("minor"),
+  moderate: v("moderate"), major: v("major"), nothr: v("nothr"), nodata: v("nodata"), ink: v("ink"), card: v("card"), differ: v("minor") }; };
+// What a marker shows: Threshold level, "nothr", or "nodata"/"offline".
+function markerState(r) {
+  if (r.error) return "nodata";
+  if (r.fresh === "offline") return "offline";
+  return r.level == null ? "nothr" : r.level;
+}
+function shapeSVG(kind, state, fresh, differ, px) {
+  const C = COLORS(), h = px / 2, w = px * .42;
+  const fill = state === "offline" || state === "nodata" ? C.nodata : state === "nothr" ? C.card : C[state];
+  const stroke = state === "nothr" ? C.nothr : C.ink;
+  const dash = fresh === "stale" ? ` stroke-dasharray="${px * .14} ${px * .1}"` : "";
+  const sw = px * .1;
+  const shape = kind === "tide_gauge" ? `<circle cx="${h}" cy="${h}" r="${w}"/>`
+    : kind === "river_gage" ? `<polygon points="${h},${h - w * 1.1} ${h + w * 1.05},${h + w * .8} ${h - w * 1.05},${h + w * .8}"/>`
+    : `<polygon points="${h},${h - w * 1.1} ${h + w * 1.1},${h} ${h},${h + w * 1.1} ${h - w * 1.1},${h}"/>`;
+  const ring = differ ? `<circle cx="${h}" cy="${h}" r="${w * 1.55}" fill="none" stroke="${C.differ}" stroke-width="${sw * 1.2}"/>` : "";
+  return `<svg width="${px}" height="${px}" viewBox="0 0 ${px} ${px}">${ring}<g fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}>${shape}</g></svg>`;
+}
+const STATE_TEXT = { offline: "offline", nodata: "no current data", nothr: "no threshold", normal: "below flood" };
+let map = null, markers = new Map(), areaLabels = [], mapTouched = false, mapFitted = false;
+const remPx = () => parseFloat(getComputedStyle(document.documentElement).fontSize);
+function ensureMap() {
+  if (map) return map;
+  map = L.map("map", { zoomControl: true, attributionControl: true, zoomSnap: 0.25 });
+  const tiles = L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 16, attribution: '<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map">USGS The National Map</a>' });
+  let tileErrors = 0;
+  tiles.on("tileerror", () => { if (++tileErrors >= 3) document.getElementById("mapnote").textContent = "Background map unavailable. Station markers are still current."; });
+  tiles.on("tileload", () => { tileErrors = 0; document.getElementById("mapnote").textContent = ""; });
+  tiles.addTo(map);
+  const el = map.getContainer();
+  for (const ev of ["mousedown", "wheel", "touchstart", "keydown"]) el.addEventListener(ev, () => { mapTouched = true; }, { passive: true });
+  map.on("zoomend", spreadMarkers);
+  const legendCtl = L.control({ position: "bottomleft" });
+  legendCtl.onAdd = () => { const d = L.DomUtil.create("div"); L.DomEvent.disableClickPropagation(d); d.id = "maplegend"; return d; };
+  legendCtl.addTo(map);
+  return map;
+}
+function mapLegend() {
+  const d = document.getElementById("maplegend"); if (!d) return;
+  const px = Math.round(remPx() * 1.1), was = d.querySelector("details");
+  const open = was ? was.open : window.innerWidth >= 1000;
+  const row = (svg, t) => `<div class="row">${svg}<span>${esc(t)}</span></div>`;
+  d.innerHTML = `<details class="maplegend"${open ? " open" : ""}><summary>Map key</summary>
+    ${row(shapeSVG("tide_gauge", "normal", "fresh", false, px), "Tide gauge")}
+    ${row(shapeSVG("river_gage", "normal", "fresh", false, px), "River")}
+    ${row(shapeSVG("wave_buoy", "nothr", "fresh", false, px), "Wave buoy")}
+    ${["action", "minor", "moderate", "major", "normal"].map(l => row(shapeSVG("tide_gauge", l, "fresh", false, px), lvlText(l))).join("")}
+    ${row(shapeSVG("tide_gauge", "nothr", "fresh", false, px), "no threshold")}
+    ${row(shapeSVG("tide_gauge", "normal", "stale", false, px), "stale (dashed outline)")}
+    ${row(shapeSVG("tide_gauge", "offline", "offline", false, px), "offline / no current data (grey)")}
+    ${row(shapeSVG("tide_gauge", "minor", "fresh", true, px), "sources differ (orange ring)")}
+  </details>`;
+}
+function renderMap() {
+  if (!map) return;
+  const px = Math.round(remPx() * 1.6);
+  const own = areas.flatMap(a => a.items.filter(x => !x.nearby)); // each Station once, where it is
+  const seen = new Set();
+  for (const x of own) {
+    const key = keyOf(x.s); seen.add(key);
+    const state = markerState(x.r), differ = !!(x.r.j && x.r.j.differ && !x.r.error && x.r.fresh !== "offline");
+    const label = `${x.s.name}, ${KIND_LABEL[x.s.kind].toLowerCase()}, ${STATE_TEXT[state] || state}${x.r.fresh === "stale" ? ", stale" : ""}${differ ? ", sources differ" : ""}`;
+    const html = `<div class="cw-marker" role="button" tabindex="0" aria-label="${esc(label)}" title="${esc(label)}" data-station="${esc(key)}"
+      data-kind="${x.s.kind}" data-state="${state}" data-fresh="${x.r.fresh}" data-differ="${differ}">${shapeSVG(x.s.kind, state, x.r.fresh, differ, px)}</div>`;
+    const icon = L.divIcon({ html, className: "", iconSize: [px, px], iconAnchor: [px / 2, px / 2] });
+    let m = markers.get(key);
+    if (!m) {
+      m = L.marker([+x.s.lat, +x.s.lon], { icon, keyboard: true, riseOnHover: true }).addTo(map);
+      m.on("click", () => onMarkerClick(key));
+      markers.set(key, m);
+    } else m.setIcon(icon);
+    m.cwItem = x; m.cwPx = px; m.cwDx = 0; m.cwDy = 0;
+    m.bindPopup(() => `<div class="popup">${stationHTML(m.cwItem, false, true)}</div>`, { maxWidth: 360 });
+    if (m.isPopupOpen()) m.setPopupContent(`<div class="popup">${stationHTML(x, false, true)}</div>`);
+  }
+  for (const [k, m] of markers) if (!seen.has(k)) { m.remove(); markers.delete(k); }
+  // Coastal area labels: just inland of the area's own Stations
+  for (const l of areaLabels) l.remove();
+  areaLabels = areas.map(a => {
+    const st = a.items.filter(x => !x.nearby).map(x => x.s);
+    const lat = st.reduce((t, s) => t + +s.lat, 0) / st.length, lon = Math.max(...st.map(s => +s.lon)) + 0.12;
+    return L.marker([lat, lon], { interactive: false, keyboard: false,
+      icon: L.divIcon({ className: "", html: `<div class="cw-area-label">${esc(a.name)}</div>`, iconSize: null, iconAnchor: [0, 8] }) }).addTo(map);
+  });
+  if (!mapFitted) fitAll();
+  spreadMarkers();
+  mapLegend();
+}
+function fitAll() {
+  const pts = [...markers.values()].map(m => m.getLatLng());
+  if (!pts.length) return;
+  map.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 9 });
+  mapFitted = true;
+}
+// Keep markers that sit almost on top of each other individually clickable by nudging them apart on screen.
+function spreadMarkers() {
+  const list = [...markers.values()];
+  const pos = list.map(m => map.latLngToLayerPoint(m.getLatLng()));
+  const off = list.map(() => ({ x: 0, y: 0 }));
+  for (let it = 0; it < 12; it++) for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const min = list[i].cwPx * 1.05;
+    const dx = (pos[j].x + off[j].x) - (pos[i].x + off[i].x), dy = (pos[j].y + off[j].y) - (pos[i].y + off[i].y);
+    const d = Math.hypot(dx, dy);
+    if (d < min) { const ux = d ? dx / d : 1, uy = d ? dy / d : 0, push = (min - d) / 2;
+      off[i].x -= ux * push; off[i].y -= uy * push; off[j].x += ux * push; off[j].y += uy * push; }
+  }
+  list.forEach((m, i) => {
+    const px = m.cwPx, ic = m.options.icon;
+    if (Math.abs(off[i].x - m.cwDx) < .5 && Math.abs(off[i].y - m.cwDy) < .5) return;
+    m.cwDx = off[i].x; m.cwDy = off[i].y;
+    m.setIcon(L.divIcon({ html: ic.options.html, className: "", iconSize: [px, px], iconAnchor: [px / 2 - off[i].x, px / 2 - off[i].y] }));
+  });
+}
+function markerEl(key) { const m = markers.get(key); return m && m.getElement() && m.getElement().querySelector(".cw-marker"); }
+function pulse(key) {
+  const el = markerEl(key); if (!el) return;
+  el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse");
+  setTimeout(() => el.classList.remove("pulse"), 2600);
+}
+function highlight(el) {
+  if (!el) return;
+  document.querySelectorAll(".hl").forEach(e => e.classList.remove("hl"));
+  el.classList.add("hl"); el.scrollIntoView({ block: "center", behavior: "smooth" });
+  setTimeout(() => el.classList.remove("hl"), 4000);
+}
+const ownArea = key => { for (const a of areas) for (const x of a.items) if (!x.nearby && keyOf(x.s) === key) return a; return null; };
+
+// ---- Cross-links between the Map and the Board ---------------------------
+function onMarkerClick(key) {
+  if (layout === "split") { const a = ownArea(key); if (a) highlight(document.querySelector(`.area[data-area="${CSS.escape(a.name)}"]`)); }
+}
+function openOnBoard(key) {
+  if (layout !== "split") setLayout("board", true);
+  if (map) map.closePopup();
+  // In Compact the Station's own card may be hidden; then point at its Coastal area.
+  const card = document.getElementById(cardId(key));
+  const visible = card && card.offsetParent !== null;
+  const a = ownArea(key);
+  highlight(visible ? card : a && document.querySelector(`.area[data-area="${CSS.escape(a.name)}"]`));
+}
+function showOnMap(key) {
+  if (layout !== "split") setLayout("map", true);
+  ensureMap(); const m = markers.get(key); if (!m) return;
+  map.setView(m.getLatLng(), Math.max(map.getZoom(), 10));
+  setTimeout(() => { pulse(key); }, 300);
+  if (layout !== "split") m.openPopup();
+}
+function focusArea(name) {
+  const a = areas.find(a => a.name === name); if (!a || !map) return;
+  const keys = a.items.filter(x => !x.nearby).map(x => keyOf(x.s));
+  const pts = keys.map(k => markers.get(k)).filter(Boolean).map(m => m.getLatLng());
+  if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 11 });
+  setTimeout(() => keys.forEach(pulse), 300);
+}
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-show-map],[data-open-board]");
+  if (t) { e.preventDefault(); if (t.dataset.showMap) showOnMap(t.dataset.showMap); else openOnBoard(t.dataset.openBoard); return; }
+  if (layout === "split") { const sec = e.target.closest("#boardPane .area"); if (sec) focusArea(sec.dataset.area); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const el = e.target.closest && e.target.closest(".cw-marker"); if (el) markers.get(el.dataset.station).fire("click").openPopup();
+});
 function legend() {
   document.getElementById("legend").innerHTML =
     ["action", "minor", "moderate", "major"].map(l => chip(l)).join(" ") + " " +
@@ -402,17 +651,101 @@ async function refresh() {
 
 function setCompact(on) {
   compact = on;
-  document.body.classList.toggle("compact", on);
-  document.getElementById("compact").setAttribute("aria-pressed", String(on));
-  try { localStorage.setItem("cw-compact", on ? "1" : "0"); } catch (e) {}
-  render();
+  store("cw-compact", on ? "1" : "0");
+  syncControls();
+  if (areas.length) renderBoard();
 }
+
+// ---- Layout and text size --------------------------------------------------
+// Order: web address (#board / #map / #split, &text=l|xl) > choice remembered on this device > screen-width default.
+const LAYOUTS = ["board", "map", "split"], TEXTS = ["normal", "l", "xl"];
+const SPLIT_MIN = 1000, SPLIT_DEFAULT = 1900;
+const store = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const recall = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+function parseHash() {
+  const out = {};
+  for (const part of location.hash.replace(/^#/, "").split("&").filter(Boolean)) {
+    if (LAYOUTS.includes(part)) out.layout = part;
+    const m = part.match(/^text=(\w+)$/); if (m && TEXTS.includes(m[1])) out.text = m[1];
+  }
+  return out;
+}
+let textSize = "normal";
+function writeHash() {
+  const h = "#" + layout + (textSize !== "normal" ? "&text=" + textSize : "");
+  if (location.hash !== h) history.replaceState(null, "", h);
+}
+function syncControls() {
+  document.querySelectorAll("#layoutGroup button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.layout === layout)));
+  document.getElementById("layoutToggle").textContent = layout === "map" ? "Board" : "Map";
+  const cb = document.getElementById("compact");
+  cb.setAttribute("aria-pressed", String(isCompact()));
+  cb.disabled = layout === "split";
+  cb.style.display = layout === "map" ? "none" : "";
+  document.getElementById("textsize").value = textSize;
+}
+function applyLayout(want, fromUser) {
+  let note = "";
+  if (want === "split" && window.innerWidth < SPLIT_MIN) {
+    want = "board";
+    note = "Split needs a screen at least 1,000 pixels wide, so the Board is shown instead.";
+  }
+  layout = want;
+  document.getElementById("note").textContent = note;
+  for (const l of LAYOUTS) document.body.classList.toggle("layout-" + l, l === layout);
+  syncControls();
+  if (layout !== "board") {
+    ensureMap();
+    map.invalidateSize();
+    if (!mapTouched) mapFitted = false;
+  }
+  if (areas.length) render();
+  if (map && layout !== "board") requestAnimationFrame(() => { map.invalidateSize(); if (!mapTouched && markers.size) fitAll(); });
+}
+function setLayout(l, fromUser) {
+  if (fromUser) store("cw-layout", l);
+  applyLayout(l, fromUser);
+  writeHash();
+}
+function setText(t, fromUser) {
+  textSize = t;
+  document.documentElement.classList.toggle("text-l", t === "l");
+  document.documentElement.classList.toggle("text-xl", t === "xl");
+  if (fromUser) store("cw-text", t);
+  syncControls();
+  writeHash();
+  if (areas.length) render();
+  if (map) map.invalidateSize();
+}
+function initialLayout() {
+  const h = parseHash();
+  const stored = recall("cw-layout");
+  const l = h.layout || (LAYOUTS.includes(stored) ? stored : null) || (window.innerWidth >= SPLIT_DEFAULT ? "split" : "board");
+  const storedText = recall("cw-text");
+  const t = h.text || (TEXTS.includes(storedText) ? storedText : null) || "normal";
+  textSize = t;
+  document.documentElement.classList.toggle("text-l", t === "l");
+  document.documentElement.classList.toggle("text-xl", t === "xl");
+  applyLayout(l);
+  writeHash();
+}
+window.addEventListener("hashchange", () => {
+  const h = parseHash();
+  if (h.text && h.text !== textSize) setText(h.text);
+  if (h.layout && h.layout !== layout) applyLayout(h.layout);
+});
+window.addEventListener("resize", () => {
+  if (layout === "split" && window.innerWidth < SPLIT_MIN) { applyLayout("split"); writeHash(); }
+  if (map) map.invalidateSize();
+});
+document.querySelectorAll("#layoutGroup button").forEach(b => b.onclick = () => setLayout(b.dataset.layout, true));
+document.getElementById("layoutToggle").onclick = () => setLayout(layout === "map" ? "board" : "map", true);
+document.getElementById("textsize").onchange = e => setText(e.target.value, true);
 document.getElementById("compact").onclick = () => setCompact(!compact);
 document.getElementById("refresh").onclick = refresh;
-try { compact = localStorage.getItem("cw-compact") === "1"; } catch (e) {}
-document.body.classList.toggle("compact", compact);
-document.getElementById("compact").setAttribute("aria-pressed", String(compact));
+compact = recall("cw-compact") === "1";
 legend();
+initialLayout();
 refresh();
 setInterval(refresh, REFRESH_MS);
 setInterval(() => areas.length && render(), 30000); // keep ages and stale marks current

@@ -31,6 +31,7 @@ jobs:
         run: |
           mkdir -p site/data
           cp index.html site/
+          cp -r vendor site/
           cp data/sensors.csv site/data/
           python3 scripts/fetch_waves.py data/sensors.csv site/data/waves.json
       - uses: actions/configure-pages@v5

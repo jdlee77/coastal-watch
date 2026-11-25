@@ -30,10 +30,17 @@ The full list is in [`docs/sensor-inventory.md`](docs/sensor-inventory.md) and t
 
 ## Status
 
-First version built: `index.html`, a single page showing tide gauges, coastal rivers and wave buoys by coastal area, north to south. It refreshes every 5 minutes, colors each Reading by the operators' published flood levels, and marks late data as stale or offline. A **Compact** button lists areas worst-first with one line each.
+`index.html` is a single page with three Layouts:
+
+- **Board**: tide gauges, coastal rivers and wave buoys by coastal area, north to south, colored by the operators' published flood levels (NWS and NOAA shown side by side), with late data marked stale or offline. **Compact** lists areas worst-first, one line each.
+- **Map**: every Station at its real location, shaped by kind and colored by level.
+- **Split**: Map and Board side by side for the watch-floor video wall.
+
+The Layout and text size can be pinned in the address, for example `…/#split&text=xl` for the video wall. The page refreshes every 5 minutes.
 
 - Terms used on the page: [`CONTEXT.md`](CONTEXT.md)
 - Decisions: [`docs/adr/`](docs/adr/)
+- Tests: `npm test` opens the page in a headless browser with saved feed responses and checks the Layouts, the Map, the links between them, and the flood-level rules. GitHub runs them on every change. To refresh the saved responses, see `tests/record-fixtures.js`.
 - Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) publishes to GitHub Pages and collects buoy data every 10 minutes ([ADR 0002](docs/adr/0002-github-pages-with-scheduled-buoy-collection.md)).
 
 ## Aggregator to start from
