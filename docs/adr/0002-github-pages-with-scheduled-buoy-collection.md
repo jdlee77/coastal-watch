@@ -11,3 +11,9 @@ Coastal Watch is a single page published on GitHub Pages; there is no server of 
 ## Update, 25 November 2026
 
 For the any-state version (ADR 0003), the scheduled job collects NDBC's single national "latest readings" file instead of a fixed list of buoys. CDIP buoys are no longer collected: the research (docs/research/nationwide-discovery.md) found that CDIP's data server allows the page to read it directly. A buoy listed by both networks is shown once, using CDIP's own data.
+
+## Update, 25 November 2026 (reliability)
+
+- GitHub does not promise scheduled runs: it delays them when busy, and can drop them without an error. In the first two hours none of the "every 10 minutes" runs happened. The schedule now runs at minutes 4, 14, 24 and so on, away from the busy top of the hour. Wave Readings carry their own time, so a missed run shows as Stale, not as wrong data. If scheduled runs still never appear in the Actions tab, turn the workflow off and on again there (Actions, Publish Coastal Watch, "..." menu).
+- The job keeps the last wave file in GitHub's Actions cache, not by downloading it from the published site, which was not reliable. This is what lets each buoy keep its last wave Reading between wave reports.
+- GitHub's deploy step sometimes looks for the uploaded site too early and fails ("No artifacts named github-pages"). The job waits 30 seconds and tries once more.

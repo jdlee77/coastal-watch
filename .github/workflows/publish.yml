@@ -1,5 +1,5 @@
 # Publishes Coastal Watch to GitHub Pages and refreshes buoy data.
-# Runs on every change to main, every 10 minutes, and on demand.
+# Runs on every change to main, about every 10 minutes, and on demand.
 # See docs/adr/0002-github-pages-with-scheduled-buoy-collection.md
 name: Publish Coastal Watch
 
@@ -7,7 +7,9 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "*/10 * * * *"
+    # Off the hour and half hour: GitHub delays or drops scheduled runs when it is busy,
+    # and the start of each hour is its busiest moment.
+    - cron: "4,14,24,34,44,54 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -24,11 +26,18 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy_retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - id: pages
-        uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v5
+      # The last collected wave file, kept in GitHub's cache between runs. It lets each buoy keep
+      # its last wave Reading between wave reports (see scripts/fetch_waves.py).
+      - name: Restore last wave file
+        uses: actions/cache/restore@v4
+        with:
+          path: previous-waves.json
+          key: waves-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: waves-
       - name: Build site folder
         run: |
           mkdir -p site/data
@@ -36,11 +45,24 @@ jobs:
           cp -r vendor site/
           cp data/sensors.csv site/data/
           cp -r data/areas site/data/
-          # The last published wave file keeps each buoy's last wave Reading between wave reports.
-          curl -fsS --max-time 30 "${{ steps.pages.outputs.base_url }}/data/waves.json" -o previous-waves.json || echo "no previous wave file"
           python3 scripts/fetch_waves.py site/data/waves.json previous-waves.json
+          cp site/data/waves.json previous-waves.json
+      - name: Keep this wave file for the next run
+        uses: actions/cache/save@v4
+        with:
+          path: previous-waves.json
+          key: waves-${{ github.run_id }}-${{ github.run_attempt }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
       - id: deploy
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      # GitHub's deploy step sometimes looks for the uploaded site a moment too early and finds
+      # nothing ("No artifacts named github-pages"). Wait, then try once more.
+      - name: Wait before retrying the deploy
+        if: steps.deploy.outcome == 'failure'
+        run: sleep 30
+      - id: deploy_retry
+        if: steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@v4
