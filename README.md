@@ -30,7 +30,11 @@ The full list is in [`docs/sensor-inventory.md`](docs/sensor-inventory.md) and t
 
 ## Status
 
-Planning. Station inventory first, then a dashboard.
+First version built: `index.html`, a single page showing tide gauges, coastal rivers and wave buoys by coastal area, north to south. It refreshes every 5 minutes, colors each Reading by the operators' published flood levels, and marks late data as stale or offline. A **Compact** button lists areas worst-first with one line each.
+
+- Terms used on the page: [`CONTEXT.md`](CONTEXT.md)
+- Decisions: [`docs/adr/`](docs/adr/)
+- Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) publishes to GitHub Pages and collects buoy data every 10 minutes ([ADR 0002](docs/adr/0002-github-pages-with-scheduled-buoy-collection.md)).
 
 ## Aggregator to start from
 

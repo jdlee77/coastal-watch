@@ -23,7 +23,7 @@ A Station shown in a Coastal area it does not sit in, because that area has none
 _Avoid_: Shared station, borrowed station
 
 **Area status**:
-The overall condition of a Coastal area: the worst Threshold level among its Fresh Readings. An area with no Fresh Readings has the status "no current data", never "normal".
+The overall condition of a Coastal area: the worst Threshold level reached by its own Fresh or Stale Readings (Nearby Stations do not count), marked stale when only Stale Readings reached it. An area with no Fresh Reading that has a Threshold, and nothing above Threshold, has the status "no current data", never "normal".
 _Avoid_: Area color, area alert, area level
 
 ## Measurement

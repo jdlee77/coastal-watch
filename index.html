@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coastal Watch</title>
+<meta name="description" content="Live Oregon coast compound flooding picture: tide gauges, coastal rivers and wave buoys by coastal area.">
+<style>
+:root {
+  --bg: #f3f5f7; --card: #ffffff; --ink: #14202b; --muted: #5a6875; --line: #d6dde3;
+  --normal: #2e7d32; --nothr: #607d8b; --nodata: #9aa5ae;
+  /* NWS hydrograph colors */
+  --action: #ffff00; --minor: #ff9900; --moderate: #ff0000; --major: #cc33ff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0d141b; --card: #16212b; --ink: #e8eef3; --muted: #9aabba; --line: #2a3946;
+          --normal: #4caf50; --nothr: #78909c; --nodata: #5f6b75; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { position: sticky; top: 0; z-index: 2; background: var(--card); border-bottom: 1px solid var(--line);
+         padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+h1 { font-size: 1.25rem; margin: 0; }
+.updated { color: var(--muted); font-size: .9rem; }
+.spacer { flex: 1; }
+button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line);
+         background: var(--bg); color: var(--ink); cursor: pointer; }
+button[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px 0; font-size: .85rem; color: var(--muted); }
+main { padding: 12px 16px 32px; display: grid; gap: 12px;
+       grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); }
+.area { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.area > h2 { margin: 0; padding: 10px 12px; font-size: 1.1rem; display: flex; gap: 8px; align-items: center;
+             border-bottom: 1px solid var(--line); }
+.area > h2 .chip { margin-left: auto; }
+.st { padding: 8px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 2px 8px;
+      grid-template-columns: 1fr auto; }
+.st:last-child { border-bottom: 0; }
+.st.nearby { opacity: .8; }
+.st .name { font-weight: 600; }
+.st .kind { color: var(--muted); font-size: .8rem; font-weight: 400; }
+.st .val { font-size: 1.35rem; font-weight: 700; text-align: right; white-space: nowrap; }
+.st .sub, .st .time { color: var(--muted); font-size: .85rem; grid-column: 1 / -1; }
+.st .time.stale { color: var(--ink); font-weight: 600; }
+.st.is-stale .val, .st.is-offline .val { text-decoration: line-through dotted; opacity: .7; }
+.st.is-offline { opacity: .55; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .78rem; font-weight: 700;
+        letter-spacing: .02em; text-transform: uppercase; border: 1px solid transparent; white-space: nowrap; }
+.chip.normal { background: var(--normal); color: #fff; }
+.chip.action { background: var(--action); color: #000; }
+.chip.minor { background: var(--minor); color: #000; }
+.chip.moderate { background: var(--moderate); color: #fff; }
+.chip.major { background: var(--major); color: #000; }
+.chip.nothr { background: transparent; color: var(--nothr); border-color: var(--nothr); }
+.chip.nodata { background: var(--nodata); color: #000; }
+.chip.stale, .chip.offline { background: transparent; color: var(--ink); border: 1px dashed var(--ink); }
+.chip.near { background: transparent; color: var(--muted); border-color: var(--line); }
+.err { color: var(--moderate); }
+.banner { margin: 12px 16px 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--minor); }
+/* Compact view: one line per area, worst first */
+body.compact main { grid-template-columns: 1fr; gap: 6px; }
+body.compact .st:not(.top), body.compact .legend .full { display: none; }
+body.compact .st.top { border-bottom: 0; }
+footer { color: var(--muted); font-size: .8rem; padding: 0 16px 24px; }
+footer a { color: inherit; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Coastal Watch <span class="kind">Oregon coast</span></h1>
+  <span class="updated" id="updated">Loading…</span>
+  <span class="spacer"></span>
+  <button id="refresh" type="button">Refresh now</button>
+  <button id="compact" type="button" aria-pressed="false">Compact</button>
+</header>
+<div class="legend" id="legend"></div>
+<div id="banner"></div>
+<main id="areas"></main>
+<footer>
+  Readings from NOAA CO-OPS, NOAA NDBC, Scripps CDIP, USGS (via NWS NWPS). Thresholds are the operators' published levels.
+  Tide water levels are feet above MLLW; river levels are gage stage in feet. Times are Pacific.
+  Not an official warning product. For tsunami, follow the <a href="https://www.tsunami.gov/">National Tsunami Warning Center</a>.
+</footer>
+<script>
+"use strict";
+// ---- Domain rules (see CONTEXT.md) -------------------------------------
+// Usual reporting interval per network, in minutes. Stale = older than 2x.
+const INTERVAL_MIN = { "CO-OPS": 6, "NDBC": 60, "CDIP": 30, "USGS": 60 };
+const OFFLINE_MIN = 24 * 60;
+const LEVELS = ["normal", "action", "minor", "moderate", "major"]; // Threshold levels, rising
+const KIND_LABEL = { tide_gauge: "Tide gauge", river_gage: "River", wave_buoy: "Wave buoy" };
+const KIND_ORDER = { tide_gauge: 0, river_gage: 1, wave_buoy: 2 };
+const REFRESH_MS = 5 * 60 * 1000;
+
+const PT = "America/Los_Angeles";
+const fmtTime = new Intl.DateTimeFormat("en-US", { timeZone: PT, hour: "2-digit", minute: "2-digit", hour12: false });
+const fmtDayTime = new Intl.DateTimeFormat("en-US", { timeZone: PT, weekday: "short", hour: "numeric", minute: "2-digit" });
+
+function ageMin(t) { return (Date.now() - t.getTime()) / 60000; }
+function freshness(t, network) {
+  if (!t) return "offline";
+  const a = ageMin(t);
+  if (a > OFFLINE_MIN) return "offline";
+  if (a > 2 * INTERVAL_MIN[network]) return "stale";
+  return "fresh";
+}
+function ageText(t) {
+  const a = Math.max(0, ageMin(t));
+  if (a < 60) return Math.round(a) + " min ago";
+  if (a < 48 * 60) return Math.round(a / 60) + " h ago";
+  return Math.round(a / 1440) + " days ago";
+}
+// Highest Threshold level the value has reached; null when the Station has no Threshold.
+function levelOf(value, thr) {
+  if (!thr || value == null) return null;
+  let lvl = "normal";
+  for (const k of LEVELS.slice(1)) if (thr[k] != null && value >= thr[k]) lvl = k;
+  return lvl;
+}
+function rank(l) { return LEVELS.indexOf(l); }
+const compass = d => d == null ? "" : ["N","NE","E","SE","S","SW","W","NW"][Math.round(d / 45) % 8];
+const ft = v => v == null ? "–" : v.toFixed(1) + " ft";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ---- Data fetching -----------------------------------------------------
+async function getJSON(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error(r.status + " " + r.statusText);
+  return r.json();
+}
+async function loadStations() {
+  const text = await (await fetch("data/sensors.csv", { cache: "no-store" })).text();
+  const [head, ...lines] = text.trim().split(/\r?\n/);
+  const cols = head.split(",");
+  // sensors.csv has no quoted fields; keep it that way (no commas inside values).
+  return lines.map(l => Object.fromEntries(l.split(",").map((v, i) => [cols[i], v])))
+              .filter(s => s.verified === "yes"); // unverified IDs are never used
+}
+const ymd = d => d.toISOString().slice(0, 10).replace(/-/g, "");
+const coopsTime = s => new Date(s.replace(" ", "T") + "Z");
+const COOPS = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?datum=MLLW&units=english&time_zone=gmt&format=json&application=coastal_watch";
+const MDAPI = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/";
+const metaCache = {};
+
+async function tideThresholds(id) {
+  if (metaCache[id]) return metaCache[id];
+  const [fl, dat] = await Promise.all([getJSON(MDAPI + id + "/floodlevels.json"), getJSON(MDAPI + id + "/datums.json")]);
+  const mllw = (dat.datums || []).find(d => d.name === "MLLW");
+  let thr = null, src = null;
+  // Flood levels are published against station datum; convert to MLLW. Prefer NWS, else NOAA NOS.
+  for (const [pre, name] of [["nws", "NWS"], ["nos", "NOAA"]]) {
+    if (fl[pre + "_minor"] != null && mllw) {
+      thr = {};
+      for (const k of ["minor", "moderate", "major"])
+        thr[k] = fl[pre + "_" + k] != null ? +(fl[pre + "_" + k] - mllw.value).toFixed(2) : null;
+      src = name; break;
+    }
+  }
+  return (metaCache[id] = { thr, src });
+}
+
+async function tideGauge(s) {
+  const id = s.station_id, now = new Date();
+  const b = ymd(new Date(now - 864e5)), e = ymd(new Date(+now + 864e5));
+  const [obs, pred, hilo, meta] = await Promise.all([
+    getJSON(`${COOPS}&station=${id}&product=water_level&date=latest`),
+    getJSON(`${COOPS}&station=${id}&product=predictions&interval=6&begin_date=${b}&end_date=${e}`),
+    getJSON(`${COOPS}&station=${id}&product=predictions&interval=hilo&begin_date=${b}&end_date=${e}`),
+    tideThresholds(id),
+  ]);
+  const o = obs.data && obs.data[0];
+  if (!o) throw new Error(obs.error ? obs.error.message : "no data");
+  const t = coopsTime(o.t), v = parseFloat(o.v);
+  const p = (pred.predictions || []).find(x => coopsTime(x.t).getTime() === t.getTime());
+  const surge = p ? v - parseFloat(p.v) : null;
+  const nextHigh = (hilo.predictions || []).map(x => ({ t: coopsTime(x.t), v: parseFloat(x.v), type: x.type }))
+                   .find(x => x.type === "H" && x.t > now);
+  const fc = nextHigh ? { t: nextHigh.t, v: nextHigh.v, label: "Next high tide (predicted)",
+                          level: levelOf(nextHigh.v, meta.thr) } : null;
+  return { t, value: v, display: ft(v), surge, thr: meta.thr, thrSrc: meta.src, forecast: fc,
+           level: levelOf(v, meta.thr) };
+}
+
+async function riverGage(s) {
+  const base = "https://api.water.noaa.gov/nwps/v1/gauges/" + s.nws_id;
+  const [g, f] = await Promise.all([getJSON(base), getJSON(base + "/stageflow/forecast").catch(() => null)]);
+  const thr = {};
+  let any = false;
+  for (const k of LEVELS.slice(1)) {
+    const st = g.flood && g.flood.categories && g.flood.categories[k] ? g.flood.categories[k].stage : null;
+    thr[k] = st != null && st > -999 ? st : null;
+    if (thr[k] != null) any = true;
+  }
+  const o = g.status && g.status.observed;
+  if (!o || o.primary == null || o.primary < -900) throw new Error("no observation");
+  const t = new Date(o.validTime), v = o.primary;
+  let fc = null;
+  if (f && f.data && f.data.length) {
+    const crest = f.data.reduce((a, b) => (b.primary > a.primary ? b : a));
+    fc = { t: new Date(crest.validTime), v: crest.primary, label: "Forecast crest (NWS)",
+           level: levelOf(crest.primary, any ? thr : null) };
+  }
+  return { t, value: v, display: ft(v), thr: any ? thr : null, thrSrc: "NWS", forecast: fc,
+           level: levelOf(v, any ? thr : null) };
+}
+
+let wavesCache = null;
+async function waveBuoy(s) {
+  const w = wavesCache.stations[s.network + ":" + s.station_id];
+  if (!w || !w.reading) throw new Error(w && w.error ? "buoy feed error" : "no wave data");
+  const r = w.reading;
+  const bits = [];
+  if (r.period_s != null) bits.push(Math.round(r.period_s) + " s");
+  if (r.direction_deg != null) bits.push("from " + compass(r.direction_deg) + " (" + Math.round(r.direction_deg) + "°)");
+  return { t: new Date(r.time), value: r.height_ft, display: ft(r.height_ft), detail: bits.join(", "),
+           thr: null, level: null };
+}
+
+async function readStation(s) {
+  try {
+    const r = s.kind === "tide_gauge" ? await tideGauge(s)
+            : s.kind === "river_gage" ? await riverGage(s)
+            : await waveBuoy(s);
+    return { ...r, error: null };
+  } catch (e) {
+    return { t: null, level: null, error: e.message || String(e) };
+  }
+}
+
+// ---- Area status (CONTEXT.md "Area status") ----------------------------
+// Worst Threshold level among the area's own Fresh and Stale Readings; marked
+// stale when that level comes only from Stale Readings. Nearby Stations do not
+// count. No Fresh Reading with a Threshold and nothing above Threshold -> no current data.
+function areaStatus(own) {
+  let worst = null, worstFresh = false, anyFreshThr = false;
+  for (const x of own) {
+    const fr = x.r.fresh;
+    if (fr === "offline" || x.r.level == null) continue;
+    if (fr === "fresh") anyFreshThr = true;
+    if (x.r.level === "normal") continue;
+    if (worst == null || rank(x.r.level) > rank(worst)) { worst = x.r.level; worstFresh = fr === "fresh"; }
+    else if (x.r.level === worst && fr === "fresh") worstFresh = true;
+  }
+  if (worst) return { level: worst, stale: !worstFresh };
+  if (anyFreshThr) return { level: "normal", stale: false };
+  return { level: "nodata", stale: false };
+}
+const SORT = { major: 0, moderate: 1, minor: 2, action: 3, nodata: 4, normal: 5 };
+
+// ---- Rendering ---------------------------------------------------------
+function chip(level, text) { return `<span class="chip ${level}">${esc(text || level)}</span>`; }
+function levelChip(r) {
+  if (r.error || r.fresh === "offline") return chip("nodata", r.fresh === "offline" && !r.error ? "offline" : "no data");
+  if (r.level == null) return chip("nothr", "no threshold");
+  return chip(r.level, r.level === "normal" ? "below flood" : r.level);
+}
+function stationHTML(x, top) {
+  const s = x.s, r = x.r;
+  const cls = ["st", x.nearby ? "nearby" : "", top ? "top" : "", r.fresh ? "is-" + r.fresh : ""].join(" ");
+  const tags = [x.nearby ? chip("near", "nearby") : "", r.fresh === "stale" ? chip("stale", "stale") : ""].join(" ");
+  let sub = [];
+  if (r.surge != null) sub.push(`Surge ${r.surge >= 0 ? "+" : "−"}${Math.abs(r.surge).toFixed(1)} ft vs predicted tide`);
+  if (r.detail) sub.push(r.detail);
+  if (r.thr) {
+    const parts = LEVELS.slice(1).filter(k => r.thr[k] != null).map(k => `${k} ${r.thr[k]}`);
+    sub.push(`Thresholds (${r.thrSrc}): ${parts.join(" · ")} ft`);
+  }
+  if (r.forecast) sub.push(`${r.forecast.label}: ${ft(r.forecast.v)} ${fmtDayTime.format(r.forecast.t)}` +
+                           (r.forecast.level && r.forecast.level !== "normal" ? " " + chip(r.forecast.level) : ""));
+  const time = r.error ? `<span class="err">Could not get a Reading: ${esc(r.error)}</span>`
+             : `<span class="time ${r.fresh !== "fresh" ? "stale" : ""}">${fmtTime.format(r.t)} PT (${ageText(r.t)})${r.fresh === "offline" ? " · offline" : ""}</span>`;
+  return `<div class="${cls}">
+    <div class="name">${esc(s.name)} <span class="kind">${KIND_LABEL[s.kind]}${x.nearby ? " · from " + esc(s.area) : ""}</span> ${tags}</div>
+    <div class="val">${r.error ? "–" : esc(r.display)} ${levelChip(r)}</div>
+    ${sub.length ? `<div class="sub">${sub.map(t => t.includes("<span") ? t : esc(t)).join("<br>")}</div>` : ""}
+    <div class="sub">${time}</div>
+  </div>`;
+}
+// Most urgent Reading for the Compact view, from the area's own Stations when it has any.
+function topOf(all) {
+  const own = all.filter(x => !x.nearby), items = own.length ? own : all;
+  const score = x => (x.r.fresh === "offline" || x.r.error ? -2 : x.r.level == null ? -1 : rank(x.r.level) * 2 + (x.r.fresh === "fresh" ? 1 : 0));
+  return [...items].sort((a, b) => score(b) - score(a) || KIND_ORDER[a.s.kind] - KIND_ORDER[b.s.kind])[0];
+}
+
+let areas = [], compact = false;
+function render() {
+  for (const a of areas) for (const x of a.items) x.r.fresh = x.r.t ? freshness(x.r.t, x.s.network) : "offline";
+  for (const a of areas) a.status = areaStatus(a.items.filter(x => !x.nearby));
+  const list = compact ? [...areas].sort((a, b) => SORT[a.status.level] - SORT[b.status.level] || a.order - b.order) : areas;
+  document.getElementById("areas").innerHTML = list.map(a => {
+    const top = compact ? topOf(a.items) : null;
+    const st = a.status;
+    const label = st.level === "nodata" ? "no current data" : st.level === "normal" ? "below flood" : st.level;
+    return `<section class="area"><h2>${esc(a.name)} ${st.stale ? chip("stale", "stale") : ""} ${chip(st.level, label)}</h2>
+      ${a.items.map(x => stationHTML(x, x === top)).join("")}</section>`;
+  }).join("");
+}
+function legend() {
+  document.getElementById("legend").innerHTML =
+    ["action", "minor", "moderate", "major"].map(l => chip(l)).join(" ") + " " +
+    chip("normal", "below flood") + " " + chip("nothr", "no threshold") + " " + chip("nodata", "no current data") +
+    ` <span class="full">· <b>stale</b> = late by more than twice the usual reporting interval; <b>offline</b> = over 24 h old</span>`;
+}
+
+let busy = false;
+async function refresh() {
+  if (busy) return; busy = true;
+  document.getElementById("updated").textContent = "Refreshing…";
+  try {
+    const stations = await loadStations();
+    try { wavesCache = await getJSON("data/waves.json"); } catch (e) { wavesCache = { stations: {} }; }
+    const readings = new Map(await Promise.all(stations.map(async s => [s, await readStation(s)])));
+    const byArea = new Map();
+    for (const s of stations) {
+      if (!byArea.has(s.area)) byArea.set(s.area, { name: s.area, order: +s.area_order, items: [] });
+    }
+    for (const s of stations) {
+      byArea.get(s.area).items.push({ s, r: readings.get(s), nearby: false });
+      for (const other of (s.also_serves || "").split(";").filter(Boolean))
+        if (byArea.has(other)) byArea.get(other).items.push({ s, r: readings.get(s), nearby: true });
+    }
+    areas = [...byArea.values()].sort((a, b) => a.order - b.order);
+    for (const a of areas) a.items.sort((x, y) => x.nearby - y.nearby || KIND_ORDER[x.s.kind] - KIND_ORDER[y.s.kind]);
+    const failed = [...readings.values()].filter(r => r.error).length;
+    document.getElementById("banner").innerHTML = failed
+      ? `<div class="banner">${failed} of ${stations.length} Stations could not be read this time. They show “no data”.</div>` : "";
+    document.getElementById("updated").textContent = "Refreshed " + fmtTime.format(new Date()) + " PT · every 5 min";
+    render();
+  } catch (e) {
+    document.getElementById("updated").innerHTML = `<span class="err">Refresh failed: ${esc(e.message)}</span>`;
+  } finally { busy = false; }
+}
+
+function setCompact(on) {
+  compact = on;
+  document.body.classList.toggle("compact", on);
+  document.getElementById("compact").setAttribute("aria-pressed", String(on));
+  try { localStorage.setItem("cw-compact", on ? "1" : "0"); } catch (e) {}
+  render();
+}
+document.getElementById("compact").onclick = () => setCompact(!compact);
+document.getElementById("refresh").onclick = refresh;
+try { compact = localStorage.getItem("cw-compact") === "1"; } catch (e) {}
+document.body.classList.toggle("compact", compact);
+document.getElementById("compact").setAttribute("aria-pressed", String(compact));
+legend();
+refresh();
+setInterval(refresh, REFRESH_MS);
+setInterval(() => areas.length && render(), 30000); // keep ages and stale marks current
+</script>
+</body>
+</html>

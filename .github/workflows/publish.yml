@@ -1,0 +1,41 @@
+# Publishes Coastal Watch to GitHub Pages and refreshes buoy data.
+# Runs on every change to main, every 10 minutes, and on demand.
+# See docs/adr/0002-github-pages-with-scheduled-buoy-collection.md
+name: Publish Coastal Watch
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build site folder
+        run: |
+          mkdir -p site/data
+          cp index.html site/
+          cp data/sensors.csv site/data/
+          python3 scripts/fetch_waves.py data/sensors.csv site/data/waves.json
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -27,8 +27,8 @@ Data: https://www.ndbc.noaa.gov (real-time text files per station).
 
 Wave height, direction, period and spectrum, which are the inputs for runup and overtopping.
 
-- PacWave South off Newport: CDIP 277, 278, 280
-- Other Oregon CDIP stations: verify current deployments
+- PacWave South off Newport: CDIP 277, 278, 280. **Not in CDIP real-time data as of 25 Nov 2026**; marked unverified.
+- Live Oregon CDIP stations as of 25 Nov 2026: 162 Clatsop Spit, 179 Astoria Canyon, 139 Umpqua Offshore
 
 Data: https://cdip.ucsd.edu. PacWave also runs FLOATr, Sofar Spotter and Nexsens buoys.
 
@@ -36,7 +36,7 @@ NWS bar cameras and bar observations cover the river entrances.
 
 ## 4. River flooding: USGS stream gages and NWS forecast points
 
-Coastal rivers (gage IDs to verify):
+Coastal rivers. USGS gage numbers and NWS codes were verified on 25 Nov 2026 and are in `data/sensors.csv`:
 
 - Nehalem River near Foss
 - Wilson River near Tillamook
