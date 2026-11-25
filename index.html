@@ -231,6 +231,84 @@ async function getJSON(url) {
   if (!r.ok) throw new Error(r.status + " " + r.statusText);
   return r.json();
 }
+async function getText(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error(r.status + " " + r.statusText);
+  return r.text();
+}
+// ---- CDIP wave buoys (docs/research/nationwide-discovery.md §5) ---------
+// The page reads CDIP's data server directly: one file holds the last 3 days
+// for every station, and the real-time catalog says which sites are public.
+const CDIP_DAP = "https://thredds.cdip.ucsd.edu/thredds/dodsC/cdip/realtime/";
+const CDIP_CATALOG = "https://thredds.cdip.ucsd.edu/thredds/catalog/cdip/realtime/catalog.xml";
+const CDIP_LATEST = CDIP_DAP + "latest_3day.nc.ascii?metaSiteLabel,metaStationName,metaWMOid,metaLatitude,metaLongitude," +
+  "waveTime,waveTimeOffset,waveHs,waveTp,waveDp,waveFlagPrimary";
+const M_TO_FT = 3.28084;
+// OPeNDAP text answer: each variable is a header line ("waveHs[144][100]") and its rows
+// ("[0], 1.2, 3.4, …"); a one-dimensional variable is a single row. Strings are quoted and may hold commas.
+function parseDap(text) {
+  const out = {};
+  const body = text.slice(text.indexOf("\n", text.indexOf("-----")) + 1);
+  for (const block of body.split(/\n\s*\n/)) {
+    const [head, ...rows] = block.trim().split("\n");
+    const m = head && head.match(/^(\w+)\[\d+\](\[\d+\])?$/);
+    if (!m) continue;
+    const vals = row => (row.replace(/^\[\d+\],\s*/, "").match(/"(?:[^"\\]|\\.)*"|[^,\s]+/g) || [])
+      .map(v => v[0] === '"' ? v.slice(1, -1) : Number(v));
+    out[m[1]] = m[2] ? rows.map(vals) : vals(rows.join(" "));
+  }
+  return out;
+}
+// "CLATSOP SPIT, OR BUOY - 162p1____" -> "Clatsop Spit, OR"
+function cdipName(raw) {
+  const n = raw.replace(/_+$/, "").replace(/\s*BUOY\s*-.*$/i, "").trim().toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
+  return n.replace(/, ([A-Za-z]{2})$/, (_, st) => ", " + st.toUpperCase());
+}
+// Latest good Reading per site from the 3-day file. Flags 1 (good) and 2 (not yet evaluated) are kept;
+// questionable, bad and missing values are skipped, so a broken buoy shows its last good Reading's age.
+let cdipCache = null, cdipAt = 0;
+// One read serves every buoy in a refresh, and discovery with the first refresh.
+function cdipLatest() {
+  if (!cdipCache || Date.now() - cdipAt > 60000) {
+    cdipAt = Date.now();
+    cdipCache = readCdipLatest();
+    cdipCache.catch(() => { cdipCache = null; });
+  }
+  return cdipCache;
+}
+async function readCdipLatest() {
+  const d = parseDap(await getText(CDIP_LATEST));
+  const sites = new Map();
+  d.metaSiteLabel.forEach((label, i) => {
+    let reading = null;
+    for (let t = d.waveTime.length - 1; t >= 0 && !reading; t--) {
+      const hs = d.waveHs[t][i], flag = d.waveFlagPrimary[t][i];
+      if (!(hs >= 0) || hs > 50 || (flag !== 1 && flag !== 2)) continue;
+      const off = d.waveTimeOffset[t][i] > -99999 ? d.waveTimeOffset[t][i] : 0;
+      const tp = d.waveTp[t][i], dp = d.waveDp[t][i];
+      reading = { time: new Date((d.waveTime[t] + off) * 1000), height_ft: +(hs * M_TO_FT).toFixed(1),
+                  period_s: tp > 0 ? tp : null, direction_deg: dp >= 0 && dp <= 360 ? dp : null };
+    }
+    sites.set(label, { label, name: cdipName(d.metaStationName[i]), wmo: d.metaWMOid[i],
+                       lat: d.metaLatitude[i], lon: d.metaLongitude[i], reading });
+  });
+  return sites;
+}
+// Public real-time sites: the p1 files in CDIP's real-time catalog. A site that has been silent
+// for more than 3 days is missing from the 3-day file; its location comes from its own file's attributes.
+async function cdipBuoys() {
+  const [xml, latest] = await Promise.all([getText(CDIP_CATALOG), cdipLatest()]);
+  const labels = [...xml.matchAll(/name="(\d+p1)_rt\.nc"/g)].map(m => m[1]);
+  return Promise.all(labels.map(async label => {
+    if (latest.has(label)) return latest.get(label);
+    try {
+      const das = await getText(CDIP_DAP + label + "_rt.nc.das");
+      const attr = k => (das.match(new RegExp(k + ' "?([^";\\n]+)')) || [])[1];
+      return { label, name: cdipName(attr("platform_name") || label), wmo: attr("wmo_id"),
+               lat: +attr("geospatial_lat_min"), lon: +attr("geospatial_lon_min"), reading: null };
+    } catch (e) { return null; }
+  })).then(list => list.filter(b => b && isFinite(b.lat) && isFinite(b.lon)));
+}
 // ---- Area definition ---------------------------------------------------
 // A saved, hand-made grouping of Stations into named Coastal areas (CONTEXT.md).
 // The page opens the Oregon coast's Area definition.
@@ -277,6 +355,7 @@ function miles(lat1, lon1, lat2, lon2) {
     Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lon2 - lon1) * r / 2) ** 2;
   return 3958.8 * 2 * Math.asin(Math.sqrt(a));
 }
+const NEARBY_BUOY_MI = 100; // a Coastal area without a buoy shows the closest one within this distance
 const RIVER_ANCHOR_MI = 40; // a river gauge farther than this from every tide gauge anchors its own Coastal area
 // NWS gauges in the rectangle (docs/research/nationwide-discovery.md §2; srid must be set).
 const nwpsSearch = b => `${NWPS_GAUGE.slice(0, -1)}?bbox.xmin=${b[0]}&bbox.ymin=${b[1]}&bbox.xmax=${b[2]}&bbox.ymax=${b[3]}&srid=EPSG_4326`;
@@ -286,7 +365,8 @@ const isRiverGauge = g => /^H[GP]/.test((g.pedts && g.pedts.observed) || "") &&
   !/\btide\b|\(in (MHHW|MLLW|MSL|NAVD)/i.test(g.name || "");
 async function discoverArea(bbox, name) {
   // Without the NWS search the tide gauges still show, with a note.
-  const [list, nwps] = await Promise.all([getJSON(COOPS_LIST), getJSON(nwpsSearch(bbox)).catch(() => null)]);
+  const [list, nwps, cdip] = await Promise.all([getJSON(COOPS_LIST), getJSON(nwpsSearch(bbox)).catch(() => null),
+    cdipBuoys().catch(() => null)]);
   const tides = (list.stations || []).filter(st => inBox(bbox, st.lat, st.lng)).map(st => ({
     network: "CO-OPS", operator: "NOAA", station_id: st.id, nws_id: st.shefcode || "", kind: "tide_gauge",
     name: st.name, lat: st.lat, lon: st.lng, time_zone: coopsZone(st), office: null, also_serves: [],
@@ -297,6 +377,10 @@ async function discoverArea(bbox, name) {
     network: "NWPS", operator: "", station_id: g.lid, nws_id: g.lid, kind: "river_gage",
     name: g.name.trim(), lat: g.latitude, lon: g.longitude, time_zone: null,
     office: g.wfo && g.wfo.name ? "NWS " + g.wfo.name : null, also_serves: [],
+  }));
+  const buoys = (cdip || []).filter(b => inBox(bbox, b.lat, b.lon)).map(b => ({
+    network: "CDIP", operator: "Scripps", station_id: b.label.replace(/p1$/, ""), nws_id: "", kind: "wave_buoy",
+    name: b.name, lat: b.lat, lon: b.lon, time_zone: null, office: null, also_serves: [],
   }));
   // The NWS office for a tide gauge: from the NWS gauge with the same ID, where there is one.
   await Promise.all(tides.filter(s => s.nws_id).map(async s => {
@@ -315,11 +399,24 @@ async function discoverArea(bbox, name) {
   // Coastal areas run along the coast: west to east in a rectangle wider than it is tall, otherwise north to south.
   const midLat = (bbox[1] + bbox[3]) / 2;
   const wide = miles(midLat, bbox[0], midLat, bbox[2]) > miles(bbox[1], bbox[0], bbox[3], bbox[0]);
+  // Each buoy joins the area of its closest tide gauge (with no tide gauge, its closest Coastal area).
+  const closest = (s, list) => list.reduce((best, t) => {
+    const d = miles(s.lat, s.lon, t.lat, t.lon); return d < best.d ? { t, d } : best; }, { t: null, d: Infinity });
+  for (const b of buoys) {
+    const c = closest(b, tides.length ? tides : anchors);
+    if (c.t) b.area = c.t.area; else { b.area = b.name; anchors.push(b); }
+  }
+  // A Coastal area with no buoy of its own shows the closest buoy within 100 miles as a Nearby Station.
+  for (const a of anchors) {
+    if (buoys.some(b => b.area === a.area)) continue;
+    const c = closest(a, buoys);
+    if (c.t && c.d <= NEARBY_BUOY_MI) c.t.also_serves.push(a.area);
+  }
   anchors.sort(wide ? (a, b) => a.lon - b.lon : (a, b) => b.lat - a.lat);
   const order = new Map(anchors.map((s, i) => [s.area, i + 1]));
-  const stations = [...tides, ...rivers];
+  const stations = [...tides, ...rivers, ...buoys];
   for (const s of stations) s.area_order = order.get(s.area);
-  return { name: name || "Custom area", linkName: name || "", bbox, stations, fromLink: true, riversMissing: !nwps };
+  return { name: name || "Custom area", linkName: name || "", bbox, stations, fromLink: true, riversMissing: !nwps, buoysMissing: !cdip };
 }
 
 // The area's time zone: the one most of its Stations use.
@@ -416,16 +513,25 @@ async function riverGage(s) {
 
 let wavesCache = null;
 async function waveBuoy(s) {
+  if (s.network === "CDIP") return cdipBuoy(s);
   const w = wavesCache.stations[s.network + ":" + s.station_id];
   if (!w || !w.reading) throw new Error(w && w.error ? "buoy feed error" : "no wave data");
-  const r = w.reading;
+  return waveReading(w.reading);
+}
+
+function waveReading(r) {
   const bits = [];
   if (r.period_s != null) bits.push(Math.round(r.period_s) + " s");
   if (r.direction_deg != null) bits.push("from " + compass(r.direction_deg) + " (" + Math.round(r.direction_deg) + "°)");
-  return { t: new Date(r.time), value: r.height_ft, display: ft(r.height_ft), detail: bits.join(", "),
-           j: null, level: null };
+  return { t: new Date(r.time), value: r.height_ft, display: ft(r.height_ft), detail: bits.join(", "), j: null, level: null };
 }
-
+// CDIP buoys are read straight from CDIP's 3-day file (site label = ID + "p1").
+async function cdipBuoy(s) {
+  const sites = await cdipLatest();
+  const w = sites.get(s.station_id + "p1");
+  if (!w || !w.reading) throw new Error("no wave data in the last 3 days");
+  return waveReading(w.reading);
+}
 async function readStation(s) {
   try {
     const r = s.kind === "tide_gauge" ? await tideGauge(s)
@@ -740,7 +846,7 @@ async function refresh() {
   if (busy) return; busy = true;
   document.getElementById("updated").textContent = "Refreshing…";
   try {
-    if (!def || def.riversMissing) {
+    if (!def || def.riversMissing || def.buoysMissing) {
       const h = parseHash();
       def = h.area ? await discoverArea(h.area, h.name) : await loadAreaDefinition();
       setTimeZone(areaTimeZone(def.stations));
@@ -764,6 +870,8 @@ async function refresh() {
     const failed = [...readings.values()].filter(r => r.error).length;
     document.getElementById("banner").innerHTML = (def.riversMissing
       ? `<div class="banner">The NWS river gauge list could not be read, so river gauges are missing. The page tries again at the next refresh.</div>` : "") +
+      (def.buoysMissing
+      ? `<div class="banner">The CDIP buoy list could not be read, so CDIP wave buoys are missing. The page tries again at the next refresh.</div>` : "") +
       (failed ? `<div class="banner">${failed} of ${stations.length} Stations could not be read this time. They show “no data”.</div>` : "");
     document.getElementById("updated").textContent = "Refreshed " + fmtTime.format(new Date()) + " · every 5 min";
     render();

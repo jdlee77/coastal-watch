@@ -25,6 +25,17 @@ const tideAt = (station, value) => (key, j) => { if (key === `coops-water_level-
 const tideAge = (station, minutes) => (key, j) => { if (key === `coops-water_level-${station}.json`) j.data[0].t = coopsStamp(minutesAgo(minutes)); return j; };
 const riverAge = (lid, minutes) => (key, j) => { if (key === `nwps-${lid}.json`) j.status.observed.validTime = minutesAgo(minutes).toISOString(); return j; };
 const buoyAge = (id, minutes) => (key, j) => { if (key === "waves.json") j.stations[id].reading.time = minutesAgo(minutes).toISOString(); return j; };
+// Set CDIP's quality flag for one site's reading at one time (1 good, 3 questionable, 4 bad).
+const cdipFlag = (label, iso, flag) => (key, text) => {
+  if (key !== "cdip-latest_3day.txt") return text;
+  const row = name => text.match(new RegExp(`\\n${name}\\[\\d+\\]\\n([^\\n]+)`))[1];
+  const col = row("metaSiteLabel").split(", ").indexOf(`"${label}"`);
+  const t = row("waveTime").split(", ").indexOf(String(Date.parse(iso) / 1000));
+  return text.replace(/(\nwaveFlagPrimary\[\d+\]\[\d+\]\n[\s\S]*?)\n\n/, (all, block) => block.split("\n").map(r => {
+    if (!r.startsWith(`[${t}], `)) return r;
+    const v = r.split(", "); v[col + 1] = String(flag); return v.join(", ");
+  }).join("\n") + "\n\n");
+};
 const all = (...fs) => (key, j) => fs.reduce((acc, f) => f(key, acc) || acc, j);
 
 test.describe("Choosing a Layout", () => {
@@ -448,5 +459,76 @@ test.describe("River gauges in an Area of responsibility from the link", () => {
     await expect(page.locator("#banner")).toContainText("river gauges are missing");
     await expect(page.locator("#boardPane .area")).toHaveCount(10);
     await expect(page.locator("#boardPane [id^=card-NWPS-]")).toHaveCount(0);
+  });
+});
+
+test.describe("CDIP wave buoys, read directly from CDIP", () => {
+  // Jacksonville to Cape Canaveral: five tide gauges, CDIP buoys off St. Augustine (194) and Cape Canaveral (143).
+  const FLORIDA = "#board&area=-81.8,28.3,-80.4,30.5&name=First%20Coast";
+  const openFlorida = (page, opts = {}) => open(page, FLORIDA, { moment: "florida", ...opts });
+  const nearbyBuoys = (page, name) => area(page, name).locator(".st.nearby[data-key^='CDIP:']");
+  // Leave a site out of CDIP's public real-time catalog
+  const notInCatalog = label => (key, text) => key === "cdip-catalog.xml" ? text.split(`${label}_rt.nc`).join(`${label}_gone.nc`) : text;
+
+  test("a CDIP buoy joins its closest tide gauge's Coastal area, with height in feet, period, direction and Data age", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openFlorida(page);
+    const card = area(page, "Mayport (Bar Pilots Dock)").locator("#card-CDIP-194");
+    await expect(card).toContainText("St. Augustine, FL");
+    await expect(card.locator(".val")).toContainText("7.9 ft");
+    await expect(card).toContainText("11 s, from E (70°)");
+    await expect(card.locator(".time")).toHaveText(/^16:00 EST \(49 min ago\)$/);
+    await expect(area(page, "Trident Pier, Port Canaveral").locator("#card-CDIP-143")).toContainText("Cape Canaveral Nearshore, FL");
+  });
+
+  test("an area without a buoy shows the closest buoy within 100 miles as a Nearby Station", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openFlorida(page);
+    await expect(nearbyBuoys(page, "Dames Point")).toHaveCount(1);
+    await expect(nearbyBuoys(page, "Dames Point")).toHaveAttribute("data-key", "CDIP:194"); // 39 miles away
+    await expect(nearbyBuoys(page, "Mayport (Bar Pilots Dock)")).toHaveCount(0); // it has its own
+  });
+
+  test("no Nearby buoy when the closest is more than 100 miles away", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openFlorida(page, { edit: notInCatalog("194p1") }); // next closest to Jacksonville: Cape Canaveral, about 150 miles
+    await expect(page.locator("[data-key='CDIP:194']")).toHaveCount(0);
+    for (const a of ["Mayport (Bar Pilots Dock)", "Dames Point", "Southbank Riverwalk, St Johns River", "I-295 Buckman Bridge"])
+      await expect(area(page, a).locator("[data-key^='CDIP:']")).toHaveCount(0);
+    await expect(area(page, "Trident Pier, Port Canaveral").locator("#card-CDIP-143")).toBeVisible();
+  });
+
+  test("only sites in CDIP's public real-time catalog are shown", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openFlorida(page, { edit: notInCatalog("143p1") });
+    await expect(page.locator("[data-key='CDIP:143']")).toHaveCount(0);
+    await expect(page.locator("#card-CDIP-194")).toBeVisible();
+  });
+
+  test("a reading CDIP flags as bad is skipped; the buoy shows its last good reading and its age", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openFlorida(page, { edit: cdipFlag("194p1", "2026-11-25T21:00:00Z", 4) }); // 4 = bad
+    const card = page.locator("#card-CDIP-194");
+    await expect(card.locator(".time")).toHaveText(/^15:30 EST \(1 h ago\)$/);
+    await expect(card).toHaveClass(/is-stale/); // over twice CDIP's 30-minute interval
+  });
+
+  test("Oregon's CDIP buoys come from CDIP, not the collected wave file", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board");
+    await expect(page.locator("#card-CDIP-162 .val")).toContainText("15.3 ft");
+    await expect(page.locator("#card-CDIP-162 .time")).toHaveText(/^11:30 PST \(56 min ago\)$/);
+    await expect(page.locator("#card-CDIP-179 .val")).toContainText("ft");
+    await expect(page.locator("#card-CDIP-139 .val")).toContainText("ft");
+  });
+
+  test("tide gauges still show when CDIP cannot be read", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await useFixtures(page, { moment: "florida" });
+    await page.route(/thredds\.cdip\.ucsd\.edu/, route => route.abort()); // added last, so it answers first
+    await page.goto("/" + FLORIDA);
+    await expect(page.locator("#updated")).toContainText("Refreshed");
+    await expect(page.locator("#banner")).toContainText("CDIP wave buoys are missing");
+    await expect(page.locator("#card-CO-OPS-8720218")).toBeVisible();
   });
 });

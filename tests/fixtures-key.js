@@ -18,6 +18,12 @@ function fixtureKey(url) {
   if ((m = u.pathname.match(/\/nwps\/v1\/gauges\/(\w+)\/stageflow\/forecast$/))) return `nwps-${m[1]}-forecast.json`;
   if ((m = u.pathname.match(/\/nwps\/v1\/gauges\/(\w+)$/))) return `nwps-${m[1]}.json`;
   if (u.pathname.endsWith("/data/waves.json")) return "waves.json";
+  // CDIP's data server answers in text and XML; these fixtures are kept as text.
+  if (u.hostname === "thredds.cdip.ucsd.edu") {
+    if (u.pathname.endsWith("/catalog/cdip/realtime/catalog.xml")) return "cdip-catalog.xml";
+    if (u.pathname.endsWith("/latest_3day.nc.ascii")) return "cdip-latest_3day.txt";
+    if ((m = u.pathname.match(/\/(\w+)_rt\.nc\.das$/))) return `cdip-${m[1]}.das.txt`;
+  }
   return null;
 }
 
