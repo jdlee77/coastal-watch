@@ -27,6 +27,8 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - id: pages
+        uses: actions/configure-pages@v5
       - name: Build site folder
         run: |
           mkdir -p site/data
@@ -34,8 +36,9 @@ jobs:
           cp -r vendor site/
           cp data/sensors.csv site/data/
           cp -r data/areas site/data/
-          python3 scripts/fetch_waves.py data/sensors.csv site/data/waves.json
-      - uses: actions/configure-pages@v5
+          # The last published wave file keeps each buoy's last wave Reading between wave reports.
+          curl -fsS --max-time 30 "${{ steps.pages.outputs.base_url }}/data/waves.json" -o previous-waves.json || echo "no previous wave file"
+          python3 scripts/fetch_waves.py site/data/waves.json previous-waves.json
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

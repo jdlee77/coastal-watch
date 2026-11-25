@@ -21,3 +21,5 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
+      - name: Wave collection script
+        run: python3 -m unittest discover -s tests -p "test_*.py" -v

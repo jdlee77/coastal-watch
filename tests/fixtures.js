@@ -44,6 +44,9 @@ async function useFixtures(page, { edit = null, tiles = "ok", moment = null } = 
     if (!key || !fs.existsSync(path.join(DIR, key))) return route.abort();
     let body = read(key);
     if (key === "cdip-latest_3day.txt") body = cdipAsOf(body, now);
+    // The collected wave file serves every test area too: a station whose Reading is later than the frozen clock is left out.
+    if (key === "waves.json") for (const [k, w] of Object.entries(body.stations))
+      if (w.reading && Date.parse(w.reading.time) > now.getTime()) delete body.stations[k];
     if (edit) body = edit(key, isJSON(key) ? JSON.parse(JSON.stringify(body)) : body) || body;
     return route.fulfill({ status: 200, contentType: isJSON(key) ? "application/json" : "text/plain",
       headers: { "access-control-allow-origin": "*" }, body: isJSON(key) ? JSON.stringify(body) : body });
