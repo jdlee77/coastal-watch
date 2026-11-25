@@ -74,6 +74,20 @@ body.layout-split.compact main { grid-template-columns: repeat(auto-fill, minmax
 .mapnote { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 500; background: var(--card);
            border: 1px solid var(--minor); border-radius: 6px; padding: 3px 10px; font-size: .8rem; }
 .mapnote:empty { display: none; }
+/* ---- Choose area ---- */
+.cw-choose button { box-shadow: 0 1px 4px rgba(0,0,0,.3); background: var(--card); font-weight: 600; }
+#drawLayer { position: absolute; inset: 0; z-index: 1100; /* above the map's own buttons while drawing */ cursor: crosshair; touch-action: none; display: none; }
+#mapPane.drawing #drawLayer { display: block; }
+#areaPanel { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1200; display: none;
+             background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+             box-shadow: 0 2px 8px rgba(0,0,0,.3); padding: 8px 12px; width: min(26rem, calc(100% - 24px)); font-size: .9rem; }
+#mapPane.drawing #areaPanel { display: block; }
+#areaPanel form { display: none; margin-top: 8px; gap: 6px; flex-wrap: wrap; align-items: center; }
+#areaPanel.drawn form { display: flex; }
+#areaPanel input { font: inherit; flex: 1 1 10rem; min-width: 0; padding: 5px 8px; border-radius: 6px;
+                   border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+#areaPanel .actions { display: flex; gap: 6px; margin-left: auto; }
+#areaPanel button.primary { background: var(--ink); color: var(--card); }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--card); color: var(--ink); }
 .leaflet-popup-content { margin: 8px 10px; min-width: 16rem; font-size: 1rem; line-height: 1.4; }
 .leaflet-popup-content .st { padding: 0; border: 0; }
@@ -147,7 +161,18 @@ footer a { color: inherit; }
 </header>
 <div class="note" id="note" role="status"></div>
 <div id="layout">
-<section id="mapPane" aria-label="Map"><div id="map"></div><div class="mapnote" id="mapnote"></div></section>
+<section id="mapPane" aria-label="Map"><div id="map"></div><div class="mapnote" id="mapnote"></div>
+  <div id="drawLayer" aria-hidden="true"></div>
+  <div id="areaPanel" role="dialog" aria-label="Choose area">
+    <div id="areaHint">Drag a rectangle over the coast you want to watch.</div>
+    <form id="areaForm">
+      <input id="areaNameInput" type="text" maxlength="80" placeholder="Name (optional), e.g. Tampa Bay" aria-label="Area name (optional)">
+      <span class="actions"><button type="submit" class="primary" id="areaConfirm">Use this area</button>
+      <button type="button" id="areaCancel">Cancel</button></span>
+    </form>
+    <button type="button" id="areaCancelDraw">Cancel</button>
+  </div>
+</section>
 <section id="boardPane" aria-label="Board">
 <div class="legend" id="legend"></div>
 <details class="explain" id="explain">
@@ -711,8 +736,81 @@ function ensureMap() {
   const legendCtl = L.control({ position: "bottomleft" });
   legendCtl.onAdd = () => { const d = L.DomUtil.create("div"); L.DomEvent.disableClickPropagation(d); d.id = "maplegend"; return d; };
   legendCtl.addTo(map);
+  const chooseCtl = L.control({ position: "topright" });
+  chooseCtl.onAdd = () => {
+    const d = L.DomUtil.create("div", "cw-choose");
+    d.innerHTML = '<button type="button" id="chooseArea">Choose area</button>';
+    L.DomEvent.disableClickPropagation(d);
+    d.firstChild.onclick = startChoosing;
+    return d;
+  };
+  chooseCtl.addTo(map);
   return map;
 }
+
+// ---- Choose area: drag a rectangle, name it, write it into the link -----
+// A layer over the map takes pointer input (mouse, pen or touch) while drawing, so the map does not pan.
+let drawRect = null, drawStart = null;
+const pane = () => document.getElementById("mapPane");
+function startChoosing() {
+  pane().classList.add("drawing");
+  document.getElementById("areaPanel").classList.remove("drawn");
+  document.getElementById("areaHint").textContent = "Drag a rectangle over the coast you want to watch.";
+  document.getElementById("areaCancelDraw").hidden = false;
+  document.getElementById("areaNameInput").value = "";
+}
+function stopChoosing() {
+  pane().classList.remove("drawing");
+  if (drawRect) { drawRect.remove(); drawRect = null; }
+  drawStart = null;
+}
+function layerPoint(e) {
+  const r = map.getContainer().getBoundingClientRect();
+  return L.point(e.clientX - r.left, e.clientY - r.top);
+}
+const drawLayer = document.getElementById("drawLayer");
+drawLayer.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  drawLayer.setPointerCapture(e.pointerId);
+  drawStart = layerPoint(e);
+  const ll = map.containerPointToLatLng(drawStart);
+  if (drawRect) drawRect.remove();
+  drawRect = L.rectangle([ll, ll], { color: getComputedStyle(document.documentElement).getPropertyValue("--nws"), weight: 2, fillOpacity: .1, interactive: false }).addTo(map);
+});
+drawLayer.addEventListener("pointermove", e => {
+  if (!drawStart || !drawRect) return;
+  drawRect.setBounds(L.latLngBounds(map.containerPointToLatLng(drawStart), map.containerPointToLatLng(layerPoint(e))));
+});
+drawLayer.addEventListener("pointerup", e => {
+  if (!drawStart) return;
+  const start = drawStart, end = layerPoint(e);
+  drawStart = null;
+  if (Math.abs(end.x - start.x) < 10 || Math.abs(end.y - start.y) < 10) { // a tap, not a rectangle
+    if (drawRect) { drawRect.remove(); drawRect = null; }
+    startChoosing();
+    return;
+  }
+  drawRect.setBounds(L.latLngBounds(map.containerPointToLatLng(start), map.containerPointToLatLng(end)));
+  document.getElementById("areaPanel").classList.add("drawn");
+  document.getElementById("areaHint").textContent = "Name it if you like, then use it. Dragging again draws a new rectangle.";
+  document.getElementById("areaCancelDraw").hidden = true;
+  document.getElementById("areaNameInput").focus({ preventScroll: true });
+});
+drawLayer.addEventListener("pointercancel", () => { drawStart = null; });
+document.getElementById("areaCancel").onclick = stopChoosing;
+document.getElementById("areaCancelDraw").onclick = stopChoosing;
+document.addEventListener("keydown", e => { if (e.key === "Escape" && pane().classList.contains("drawing")) stopChoosing(); });
+document.getElementById("areaForm").onsubmit = e => {
+  e.preventDefault();
+  if (!drawRect) return;
+  const b = drawRect.getBounds(), r = v => +v.toFixed(3);
+  const area = [r(b.getWest()), r(b.getSouth()), r(b.getEast()), r(b.getNorth())];
+  const name = document.getElementById("areaNameInput").value.trim().slice(0, 80);
+  stopChoosing();
+  // Layout and text size stay; the hashchange handler loads the new Area of responsibility.
+  location.hash = "#" + layout + (textSize !== "normal" ? "&text=" + textSize : "") + "&area=" + area.join(",")
+                + (name ? "&name=" + encodeURIComponent(name) : "");
+};
 function mapLegend() {
   const d = document.getElementById("maplegend"); if (!d) return;
   const px = Math.round(remPx() * 1.1), was = d.querySelector("details");
