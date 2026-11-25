@@ -44,6 +44,10 @@ _Avoid_: Prediction, outlook, projection
 A published level that, when a Reading passes it, marks a condition worth attention (for example an NWS flood stage). Coastal Watch uses the operators' published levels and does not invent its own; a Station with no published level has no Threshold.
 _Avoid_: Limit, alarm level, trigger
 
+**Threshold level**:
+One of the four NWS steps a Threshold can mark, in rising order: action, minor, moderate, major. Tide-gauge flood levels use only minor, moderate and major.
+_Avoid_: Severity, alert level, warning level
+
 ## Data age
 
 **Fresh**:
