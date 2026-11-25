@@ -184,7 +184,7 @@ footer a { color: inherit; }
 "use strict";
 // ---- Domain rules (see CONTEXT.md) -------------------------------------
 // Usual reporting interval per network, in minutes. Stale = older than 2x.
-const INTERVAL_MIN = { "CO-OPS": 6, "NDBC": 60, "CDIP": 30, "USGS": 60 };
+const INTERVAL_MIN = { "CO-OPS": 6, "NDBC": 60, "CDIP": 30, "USGS": 60, "NWPS": 60 };
 const OFFLINE_MIN = 24 * 60;
 const LEVELS = ["normal", "action", "minor", "moderate", "major"]; // Threshold levels, rising
 const KIND_LABEL = { tide_gauge: "Tide gauge", river_gage: "River", wave_buoy: "Wave buoy" };
@@ -271,19 +271,55 @@ function coopsZone(st) {
   return Number.isInteger(h) ? "Etc/GMT" + (h <= 0 ? "+" : "-") + Math.abs(h) : null;
 }
 const inBox = (b, lat, lon) => lon >= b[0] && lat >= b[1] && lon <= b[2] && lat <= b[3];
+// Distance in miles between two points (great-circle).
+function miles(lat1, lon1, lat2, lon2) {
+  const r = Math.PI / 180, a = Math.sin((lat2 - lat1) * r / 2) ** 2 +
+    Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lon2 - lon1) * r / 2) ** 2;
+  return 3958.8 * 2 * Math.asin(Math.sqrt(a));
+}
+const RIVER_ANCHOR_MI = 40; // a river gauge farther than this from every tide gauge anchors its own Coastal area
+// NWS gauges in the rectangle (docs/research/nationwide-discovery.md §2; srid must be set).
+const nwpsSearch = b => `${NWPS_GAUGE.slice(0, -1)}?bbox.xmin=${b[0]}&bbox.ymin=${b[1]}&bbox.xmax=${b[2]}&bbox.ymax=${b[3]}&srid=EPSG_4326`;
+// A river gauge reports river stage (HG) or pool level (HP). NWS also tracks many tide
+// gauges, some under HG; their names say so ("Tide Gauge…", "(in MHHW)").
+const isRiverGauge = g => /^H[GP]/.test((g.pedts && g.pedts.observed) || "") &&
+  !/\btide\b|\(in (MHHW|MLLW|MSL|NAVD)/i.test(g.name || "");
 async function discoverArea(bbox, name) {
-  const list = await getJSON(COOPS_LIST);
+  // Without the NWS search the tide gauges still show, with a note.
+  const [list, nwps] = await Promise.all([getJSON(COOPS_LIST), getJSON(nwpsSearch(bbox)).catch(() => null)]);
   const tides = (list.stations || []).filter(st => inBox(bbox, st.lat, st.lng)).map(st => ({
     network: "CO-OPS", operator: "NOAA", station_id: st.id, nws_id: st.shefcode || "", kind: "tide_gauge",
     name: st.name, lat: st.lat, lon: st.lng, time_zone: coopsZone(st), office: null, also_serves: [],
+  }));
+  const tideIds = new Set(tides.map(s => s.nws_id).filter(Boolean));
+  const rivers = ((nwps && nwps.gauges) || []).filter(g => isRiverGauge(g) && !tideIds.has(g.lid) && inBox(bbox, g.latitude, g.longitude)).map(g => ({
+    // Found through NWS (NWPS), keyed by its NWS ID; the measuring operator (usually USGS) is not in the search.
+    network: "NWPS", operator: "", station_id: g.lid, nws_id: g.lid, kind: "river_gage",
+    name: g.name.trim(), lat: g.latitude, lon: g.longitude, time_zone: null,
+    office: g.wfo && g.wfo.name ? "NWS " + g.wfo.name : null, also_serves: [],
   }));
   // The NWS office for a tide gauge: from the NWS gauge with the same ID, where there is one.
   await Promise.all(tides.filter(s => s.nws_id).map(async s => {
     try { const g = await getJSON(NWPS_GAUGE + s.nws_id); if (g.wfo && g.wfo.name) s.office = "NWS " + g.wfo.name; } catch (e) { /* no NWS gauge */ }
   }));
-  // Each tide gauge anchors a Coastal area named after it, north to south.
-  tides.sort((a, b) => b.lat - a.lat).forEach((s, i) => { s.area = s.name; s.area_order = i + 1; });
-  return { name: name || "Custom area", linkName: name || "", bbox, stations: tides, fromLink: true };
+  // Each tide gauge anchors a Coastal area named after it. Each river gauge joins the
+  // area of its closest tide gauge, or anchors its own when every tide gauge is over 40 miles away.
+  const anchors = [...tides];
+  for (const s of tides) s.area = s.name;
+  for (const s of rivers) {
+    let best = null, d = Infinity;
+    for (const t of tides) { const m = miles(s.lat, s.lon, t.lat, t.lon); if (m < d) { d = m; best = t; } }
+    if (best && d <= RIVER_ANCHOR_MI) s.area = best.area;
+    else { s.area = s.name; anchors.push(s); }
+  }
+  // Coastal areas run along the coast: west to east in a rectangle wider than it is tall, otherwise north to south.
+  const midLat = (bbox[1] + bbox[3]) / 2;
+  const wide = miles(midLat, bbox[0], midLat, bbox[2]) > miles(bbox[1], bbox[0], bbox[3], bbox[0]);
+  anchors.sort(wide ? (a, b) => a.lon - b.lon : (a, b) => b.lat - a.lat);
+  const order = new Map(anchors.map((s, i) => [s.area, i + 1]));
+  const stations = [...tides, ...rivers];
+  for (const s of stations) s.area_order = order.get(s.area);
+  return { name: name || "Custom area", linkName: name || "", bbox, stations, fromLink: true, riversMissing: !nwps };
 }
 
 // The area's time zone: the one most of its Stations use.
@@ -704,7 +740,7 @@ async function refresh() {
   if (busy) return; busy = true;
   document.getElementById("updated").textContent = "Refreshing…";
   try {
-    if (!def) {
+    if (!def || def.riversMissing) {
       const h = parseHash();
       def = h.area ? await discoverArea(h.area, h.name) : await loadAreaDefinition();
       setTimeZone(areaTimeZone(def.stations));
@@ -726,8 +762,9 @@ async function refresh() {
     renderOffices(stations, readings);
     for (const a of areas) a.items.sort((x, y) => x.nearby - y.nearby || KIND_ORDER[x.s.kind] - KIND_ORDER[y.s.kind]);
     const failed = [...readings.values()].filter(r => r.error).length;
-    document.getElementById("banner").innerHTML = failed
-      ? `<div class="banner">${failed} of ${stations.length} Stations could not be read this time. They show “no data”.</div>` : "";
+    document.getElementById("banner").innerHTML = (def.riversMissing
+      ? `<div class="banner">The NWS river gauge list could not be read, so river gauges are missing. The page tries again at the next refresh.</div>` : "") +
+      (failed ? `<div class="banner">${failed} of ${stations.length} Stations could not be read this time. They show “no data”.</div>` : "");
     document.getElementById("updated").textContent = "Refreshed " + fmtTime.format(new Date()) + " · every 5 min";
     render();
   } catch (e) {

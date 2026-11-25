@@ -33,6 +33,12 @@ const { fixtureKey, DIR } = require("./fixtures-key");
         const keep = ["id", "name", "lat", "lng", "state", "tidal", "greatlakes", "shefcode", "timezone", "timezonecorr", "observedst"];
         json = { count: json.count, stations: json.stations.map(s => Object.fromEntries(keep.map(k => [k, s[k]]))) };
       }
+      // NWS gauges: keep only the fields the page reads (a full gauge record is up to 50 KB).
+      if (key.startsWith("nwps-gauges-")) {
+        json = { gauges: json.gauges.map(g => ({ lid: g.lid, name: g.name, wfo: g.wfo, latitude: g.latitude, longitude: g.longitude, pedts: g.pedts })) };
+      } else if (/^nwps-\w+\.json$/.test(key)) {
+        json = { lid: json.lid, name: json.name, wfo: json.wfo, flood: { categories: json.flood && json.flood.categories }, status: json.status };
+      }
       fs.writeFileSync(path.join(DIR, key), JSON.stringify(json));
       saved.push(key);
     } catch (e) { console.error("skip", key, e.message); }
