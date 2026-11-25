@@ -88,7 +88,7 @@ The Layout that lists Coastal areas north to south, each with its Stations, Read
 _Avoid_: Chart (means a nautical chart or a hydrograph), dashboard, list, table
 
 **Map**:
-The Layout that places every Station once at its real location, shaped by kind and colored by Threshold level, with Coastal areas labeled along the coast.
+The Layout that places every Station once at its real location, shaped by kind and colored by Threshold level. Coastal areas named in an Area definition are labeled along the coast; Coastal areas named automatically are not, because their name is already a Station's name. A Station's name shows when it is selected, not on the Map itself.
 _Avoid_: Chart, GIS view
 
 **Split**:
