@@ -169,6 +169,8 @@ test.describe("The Map", () => {
     await page.setViewportSize(DESK);
     await open(page, "#map", { edit: all(buoyAge("NDBC:46029", 180), tideAge("9431647", 30 * 60)) });
     await expect(marker(page, "NDBC:46029")).toHaveAttribute("data-fresh", "stale");
+    await expect(marker(page, "CO-OPS:9431647")).toHaveCount(0); // Offline is Silent: hidden until shown
+    await page.locator("#silentToggle").click();
     await expect(marker(page, "NDBC:46029").locator("g")).toHaveAttribute("stroke-dasharray", /\d/);
     await expect(marker(page, "CO-OPS:9431647")).toHaveAttribute("data-state", "offline");
     await expect(marker(page, "CO-OPS:9431647")).toHaveAttribute("aria-label", /offline/);
@@ -388,7 +390,7 @@ test.describe("An Area of responsibility from the link", () => {
     expect(await layoutOf(page)).toBe("split");
     await expect(page.locator("html")).toHaveClass(/text-xl/);
     await expect(page).toHaveURL(/#split&text=xl&area=-82\.9,27\.5,-82\.35,28\.05&name=Tampa%20Bay$/);
-    await expect(page.locator(".cw-marker")).toHaveCount(38); // 5 tide gauges and 33 river gauges
+    await expect(page.locator(".cw-marker")).toHaveCount(37); // 5 tide gauges and 33 river gauges, 1 of them Silent and hidden
     const box = await page.locator("#map").boundingBox();
     for (const el of await page.locator(".cw-marker").all()) {
       const b = await el.boundingBox();
@@ -735,6 +737,7 @@ test.describe("Big areas and failed station lists", () => {
   test("an area with more than 150 Stations shows a warning and still shows every Station", async ({ page }) => {
     await page.setViewportSize(DESK);
     await open(page, FLORIDA, { moment: "florida", edit: extraBuoys(120) });
+    await page.locator("#silentToggle").click(); // count the Silent Stations too
     await expect(page.locator("#bigArea")).toContainText("This area has 156 Stations");
     await expect(page.locator("#bigArea")).toContainText("A smaller area is easier to watch");
     expect(await stationCount(page)).toBe(156);
@@ -744,6 +747,7 @@ test.describe("Big areas and failed station lists", () => {
   test("an area with fewer than 150 Stations shows no warning", async ({ page }) => {
     await page.setViewportSize(DESK);
     await open(page, FLORIDA, { moment: "florida" });
+    await page.locator("#silentToggle").click(); // count the Silent Stations too
     expect(await stationCount(page)).toBe(36);
     await expect(page.locator("#bigArea")).toHaveCount(0);
   });
@@ -789,7 +793,7 @@ test.describe("Map labels", () => {
   test("an Area of responsibility from the link has no Coastal area labels on the Map, only markers", async ({ page }) => {
     await page.setViewportSize(DESK);
     await open(page, "#map&area=-81.8,28.3,-80.4,30.5&name=First%20Coast", { moment: "florida" });
-    await expect(page.locator(".cw-marker")).toHaveCount(36);
+    await expect(page.locator(".cw-marker")).toHaveCount(34); // 36 Stations, 2 of them Silent and hidden
     await expect(page.locator(".cw-area-label")).toHaveCount(0);
     // A Station's name still shows when it is selected
     await marker(page, "CO-OPS:8720218").click();
@@ -856,5 +860,72 @@ test.describe("Data for your own map", () => {
       await expect(page.locator("#noaa")).toContainText(svc);
     await expect(page.locator("#noaa")).toContainText("CDIP (Scripps) publishes no ArcGIS service");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390); // no sideways scroll on a phone
+  });
+});
+
+test.describe("Most urgent first; Silent Stations hidden", () => {
+  const FLORIDA = "#board&area=-81.8,28.3,-80.4,30.5&name=First%20Coast";
+  const cardsIn = (page, name) => area(page, name).locator(".st:not(.nearby)").evaluateAll(els => els.map(e => e.dataset.key));
+
+  test("within a Coastal area, its Stations are listed most urgent first", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board", { edit: riverAt("TLMO3", 20) }); // Wilson River above major (19 ft)
+    const keys = await cardsIn(page, "Tillamook Bay");
+    expect(keys[0]).toBe("USGS:14301500"); // major, above Garibaldi's action
+    expect(keys[1]).toBe("CO-OPS:9437540");
+    expect(keys.at(-1)).toBe("NDBC:46089"); // a wave buoy has no Threshold
+    await expect(area(page, "Tillamook Bay").locator(".st").last()).toHaveClass(/nearby/); // Nearby Stations stay last
+  });
+
+  test("at the same level, a Fresh Reading comes before a Stale one", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    // Coos Bay's three rivers are all below flood and Fresh; make the Coquille River (COQO3) Stale
+    await open(page, "#board", { edit: riverAge("COQO3", 300) });
+    const rivers = (await cardsIn(page, "Coos Bay / Coquille")).filter(k => k.startsWith("USGS:"));
+    expect(rivers).toHaveLength(3);
+    expect(rivers.at(-1)).toBe("USGS:14327055");
+  });
+
+  test("Silent Stations are hidden on the Board and the Map until shown, and the choice is remembered", async ({ page }) => {
+    await page.setViewportSize(WALL);
+    await open(page, "#split&area=-81.8,28.3,-80.4,30.5", { moment: "florida" });
+    const toggle = page.locator("#silentToggle");
+    await expect(toggle).toHaveText("Silent (2)");
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    for (const k of ["NWPS:RDGF1", "NWPS:LKJF1"]) { // could not be read
+      await expect(page.locator(`[data-key='${k}']`)).toHaveCount(0);
+      await expect(marker(page, k)).toHaveCount(0);
+    }
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await expect(marker(page, "NWPS:RDGF1")).toHaveCount(1);
+    await page.reload();
+    await expect(page.locator("#updated")).toContainText("Refreshed");
+    await expect(page.locator("#silentToggle")).toHaveAttribute("aria-pressed", "true");
+    await expect(marker(page, "NWPS:RDGF1")).toHaveCount(1);
+  });
+
+  test("an Offline Station is Silent, a Stale one is not", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board", { edit: all(tideAge("9431647", 25 * 60), riverAge("TLMO3", 300)) });
+    await expect(page.locator("#silentToggle")).toHaveText("Silent (1)");
+    await expect(page.locator("#card-CO-OPS-9431647")).toHaveCount(0); // over 24 h: Offline
+    await expect(page.locator("#card-USGS-14301500")).toHaveClass(/is-stale/); // 5 h late: Stale, still shown
+  });
+
+  test("an area whose Stations are all Silent stays on the Board and says so", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, FLORIDA, { moment: "florida" });
+    const halifax = area(page, "Halifax River at Main St Bridge");
+    await expect(halifax.locator("h2")).toContainText(/no current data/i);
+    await expect(halifax.locator(".silent-note")).toHaveText("1 Silent Station hidden");
+    await page.locator("#compact").click();
+    await expect(halifax.locator(".silent-note")).toBeVisible(); // Compact keeps the note when it is the area's only line
+  });
+
+  test("no banner counts Stations that could not be read", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, FLORIDA, { moment: "florida" });
+    await expect(page.locator("#banner")).not.toContainText("could not be read");
   });
 });
