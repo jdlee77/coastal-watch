@@ -1,50 +1,88 @@
 # Coastal Watch
 
-A situational-awareness tool for Oregon coastal hazards: inundation, storm surge, high surf, river flooding at the coast, and tsunami. It pulls public, real-time sensor feeds into one watch-floor view so that ESF-2, the OEC3 watch floor, and OR-Alert decision makers see the same picture.
+A live, shared picture of coastal flooding conditions, built from public real-time sensors. It was built first for the Oregon coast's ESF-2 group, the OEC3 watch floor and OR-Alert decision makers, and it works for any US coast.
+
+**Open it:** <https://jdlee77.github.io/coastal-watch/>
 
 ## Why
 
-No single feed covers coastal flooding. The dangerous events are **compound**: high river flow, high tide, storm surge, and big waves arriving together, as in Tillamook and Coquille. Each piece is measured by a different agency on a different website. Coastal Watch puts them side by side.
+No single feed covers coastal flooding. The dangerous events are **compound**: high river flow, high tide, storm surge and big waves arriving together, as in Tillamook and Coquille. Each piece is measured by a different agency on a different website. Coastal Watch puts them side by side, grouped by stretch of coast, and colored by each agency's own published flood levels.
 
-## Sensor networks (starting inventory)
+It is **not an official warning product**. For tsunami, follow the [National Tsunami Warning Center](https://www.tsunami.gov/).
 
-| Hazard | Network | Operator | Examples |
+## Using it
+
+### Three Layouts
+- **Board**: each Coastal area as a card, along the coast (north to south, or west to east on a coast that runs that way). Inside a card, the most urgent Station comes first. **Compact** shows one line per area, worst area first.
+- **Map**: every Station at its real location. Shape shows the kind (circle = tide gauge, triangle = river, diamond = wave buoy); color shows the flood level. Click a marker for its Reading.
+- **Split**: Map and Board side by side, built for the watch-floor video wall. Clicking an area on the Board points to its markers on the Map, and clicking a marker points to its area on the Board.
+
+### Reading the colors
+- **Flood levels** follow the NWS steps: action (yellow), minor (orange), moderate (red), major (purple). Green is below flood; an outlined grey tag means the Station has no published flood level.
+- **NWS and NOAA levels** are shown side by side on tide gauges. NWS levels come from the local forecast office; NOAA levels come from one national formula. When the two disagree, the Station is marked **sources differ** and shows the higher one. The "Flood level sources" panel on the Board explains both and names the NWS offices for the area.
+- **Data age** is on every Reading. **Stale** means late by more than twice the usual reporting interval (a dashed outline on the Map). **Offline** means over 24 hours old.
+- **Silent Stations** (no Reading in the last 24 hours) are hidden, so they don't clutter the view. The **Silent (N)** button in the header shows how many are hidden, and shows them when pressed. An area whose Stations are all silent keeps its card and says "no current data", because a blind spot is not the same as calm water.
+
+### Saving a view in a link
+Everything about the view lives in the address, so a bookmark or a video-wall screen always reopens the same thing:
+
+| Link | Opens |
+|---|---|
+| `…/coastal-watch/` | The Oregon coast, Layout chosen by screen width |
+| `…/coastal-watch/#split&text=xl` | Oregon in Split, extra-large text (video wall) |
+| `…/coastal-watch/#board&area=-82.9,27.5,-82.35,28.05&name=Tampa%20Bay` | Any other coast: a rectangle (west, south, east, north) and a name |
+
+### Watching another coast
+On the Map, press **Choose area**, drag a rectangle over the coast (mouse or finger), give it a name if you like, and press **Use this area**. The link updates, so you can bookmark it or share it.
+
+Coastal Watch then finds every Station in that rectangle from each agency's own public list:
+- Each NOAA tide gauge anchors a Coastal area named after it.
+- Each river gauge joins the area of its closest tide gauge, or gets its own area if every tide gauge is more than 40 miles away.
+- Each buoy joins its closest tide gauge's area. An area with no buoy of its own shows the closest one within 100 miles, marked "nearby".
+
+Oregon is different: its eight Coastal areas ("Columbia River mouth" to "Port Orford / Gold Beach") are hand-named in an **Area definition** ([`data/areas/oregon.json`](data/areas/oregon.json) with [`data/sensors.csv`](data/sensors.csv)), so they match how OR-Alert talks about the coast. Another state can add its own the same way.
+
+### Data for your own map
+For GIS staff, [**Data for your own map**](https://jdlee77.github.io/coastal-watch/feeds.html) (linked in the Board's footer) gives:
+- the Oregon **Station layer** as GeoJSON and CSV at fixed addresses, with steps for adding it to ArcGIS Online: every Station with its location, Coastal area, and links to its agency page and live data;
+- links to NOAA's own ArcGIS services for river gauges, tide gauges and NDBC buoys.
+
+For any other area, **Download these Stations** in the Board's footer saves the Stations on screen as GeoJSON or CSV.
+
+## Where the data comes from
+
+| What | Network | Agency | How Coastal Watch reads it |
 |---|---|---|---|
-| Water level / surge | Tide gauges (CO-OPS) | NOAA | Astoria, Garibaldi, South Beach, Charleston, Port Orford |
-| Offshore waves | Moored buoys | NOAA NDBC | 46029 Columbia River Bar, 46050 Stonewall Bank, 46015 Port Orford |
-| Nearshore waves | Waverider buoys | Scripps CDIP | PacWave South (277, 278, 280) and others |
-| River flooding | Stream gages / forecast points | USGS, NWS | Nehalem, Wilson, Trask, Nestucca, Siletz, Alsea, Siuslaw, Umpqua, Coquille, Rogue |
-| Tsunami | DART buoys | NOAA | DART 4G off Oregon (status to verify) |
-| Earthquake | ShakeAlert seismic stations | PNSN / USGS | 569 stations across OR and WA |
-| Ocean conditions | OOI Endurance Array | OSU | Newport line moorings (inner shelf, shelf, slope) |
-| Surface currents | HF radar | OSU | Coastal coverage |
-| Shoreline change | Beach profile monitoring | DOGAMI / OSU | Repeat GPS surveys, not real-time |
+| Water level, Surge, next high tide | Tide gauges (CO-OPS) | NOAA | Directly from the browser |
+| River stage, flood levels, forecast crests | River gauges | NWS (National Water Prediction Service); most measured by USGS | Directly from the browser |
+| Nearshore and offshore waves | Waverider buoys (CDIP) | Scripps | Directly from the browser |
+| Offshore waves | Moored buoys (NDBC) | NOAA | Collected about every 10 minutes by a scheduled job, because NDBC does not let web pages read its files directly |
 
-The full list is in [`docs/sensor-inventory.md`](docs/sensor-inventory.md) and the machine-readable station list is in [`data/sensors.csv`](data/sensors.csv). The Oregon coast's Area definition, [`data/areas/oregon.json`](data/areas/oregon.json), names that list and holds the area's name, time zone and NWS office names.
+**Surge** is how far the measured water level is above or below the predicted tide at that moment.
 
-## Known gaps
+## What it does not cover
+- **Wave flood levels:** waves have no published flood levels yet, so buoys show heights without a color.
+- **Great Lakes, and tide gauges with no tidal datum:** they have no tide prediction or MLLW reading, so they are left out, with a note saying how many. River gauges and buoys there still show.
+- **River gauges that only USGS tracks:** they have no published flood levels, so they are not shown.
+- **Small Oregon estuaries** (Nehalem, Siletz, Coquille) have no live water-level gauge, only tide predictions.
+- **Other hazards** (earthquake, tsunami sensors, currents) are out of scope; see [ADR 0001](docs/adr/0001-v1-scope-compound-flooding.md). The wider research list of Oregon sensors is in [`docs/sensor-inventory.md`](docs/sensor-inventory.md).
 
-- No live water-level gauges in several small estuaries (Nehalem, Siletz, Coquille). Those have tide predictions only.
-- Little nearshore wave or runup sensing at the communities themselves.
-- Possible fills: low-cost water-level sensors, or USGS rapid-deployment storm-tide sensors placed ahead of forecast events.
+## How it is built
 
-## Status
+For whoever maintains it:
 
-`index.html` is a single page with three Layouts:
+- **One page, no server.** [`index.html`](index.html) is a single self-contained page; [`feeds.html`](feeds.html) is the data page. The only library is [Leaflet](https://leafletjs.com/) for the Map, stored in `vendor/`.
+- **Publishing.** [`.github/workflows/publish.yml`](.github/workflows/publish.yml) publishes the site to GitHub Pages on every change to `main`, and on a schedule about every 10 minutes to refresh buoy data ([ADR 0002](docs/adr/0002-github-pages-with-scheduled-buoy-collection.md)). Each run:
+  - collects NDBC wave data with [`scripts/fetch_waves.py`](scripts/fetch_waves.py), keeping each buoy's last wave Reading between its wave reports;
+  - builds the Oregon Station layer with [`scripts/build_station_layer.py`](scripts/build_station_layer.py).
 
-- **Board**: tide gauges, coastal rivers and wave buoys by coastal area, north to south, colored by the operators' published flood levels (NWS and NOAA shown side by side), with late data marked stale or offline. **Compact** lists areas worst-first, one line each.
-- **Map**: every Station at its real location, shaped by kind and colored by level.
-- **Split**: Map and Board side by side for the watch-floor video wall.
+  GitHub sometimes delays or skips scheduled runs. When that happens, buoy Readings turn Stale and then Offline on the page instead of passing old data off as current.
+- **Tests.** GitHub runs them on every change. Locally:
+  - `npm test` opens the page in a headless browser and checks what a watch officer would see: the Layouts, the Map, the links between them, the flood-level rules, data age, finding Stations for other coasts, and the data page. Every outside request is answered from saved real responses in [`tests/fixtures/`](tests/fixtures/), with the clock frozen at the moment they were recorded, so results never depend on live conditions. To record new ones, see [`tests/record-fixtures.js`](tests/record-fixtures.js).
+  - `python3 -m unittest discover -s tests -p "test_*.py"` checks the two Python scripts.
 
-The Layout and text size can be pinned in the address, for example `…/#split&text=xl` for the video wall. The page refreshes every 5 minutes.
-
-`feeds.html`, **Data for your own map**, is for GIS staff. It gives the Oregon Station layer (GeoJSON and CSV at fixed addresses, rebuilt on each publish by `scripts/build_station_layer.py`) with steps for ArcGIS Online, and links to NOAA's own ArcGIS services. The Board's footer downloads the Stations on screen for any other area.
-
-- Terms used on the page: [`CONTEXT.md`](CONTEXT.md)
-- Decisions: [`docs/adr/`](docs/adr/)
-- Tests: `npm test` opens the page in a headless browser with saved feed responses and checks the Layouts, the Map, the links between them, and the flood-level rules. GitHub runs them on every change. To refresh the saved responses, see `tests/record-fixtures.js`.
-- Publishing: [`.github/workflows/publish.yml`](.github/workflows/publish.yml) publishes to GitHub Pages and collects buoy data every 10 minutes ([ADR 0002](docs/adr/0002-github-pages-with-scheduled-buoy-collection.md)).
-
-## Aggregator to start from
-
-NANOOS Visualization System (NVS): https://nvs.nanoos.org
+### Further reading
+- [`CONTEXT.md`](CONTEXT.md): the words used on the page and in the code (Station, Reading, Threshold, Coastal area, Silent Station…), each with one meaning.
+- [`docs/adr/`](docs/adr/): the decisions behind the design and why they were made.
+- [`docs/research/nationwide-discovery.md`](docs/research/nationwide-discovery.md): how each agency's feed can be searched by area, and its gaps outside Oregon.
+- [NANOOS Visualization System](https://nvs.nanoos.org): the regional ocean-observing portal for the Pacific Northwest, a broader view of many of the same sensors.
