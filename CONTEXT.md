@@ -15,8 +15,16 @@ _Avoid_: Storm tide (that is the total water level, not the difference), anomaly
 ## Places
 
 **Coastal area**:
-A stretch of coast, ordered north to south, that groups the Stations relevant to one community's flood risk: its tide gauge, its rivers and its nearest wave buoys.
+A stretch of coast, ordered north to south, that groups the Stations relevant to one community's flood risk: its tide gauge, its rivers and its nearest wave buoys. A Station may serve neighbouring Coastal areas.
 _Avoid_: Basin, zone, region, sector
+
+**Nearby Station**:
+A Station shown in a Coastal area it does not sit in, because that area has none of its own of that kind (for example a buoy off Newport shown for Florence).
+_Avoid_: Shared station, borrowed station
+
+**Area status**:
+The overall condition of a Coastal area: the worst Threshold level among its Fresh Readings. An area with no Fresh Readings has the status "no current data", never "normal".
+_Avoid_: Area color, area alert, area level
 
 ## Measurement
 
