@@ -38,6 +38,8 @@ The full list is in [`docs/sensor-inventory.md`](docs/sensor-inventory.md) and t
 
 The Layout and text size can be pinned in the address, for example `…/#split&text=xl` for the video wall. The page refreshes every 5 minutes.
 
+`feeds.html`, **Data for your own map**, is for GIS staff. It gives the Oregon Station layer (GeoJSON and CSV at fixed addresses, rebuilt on each publish by `scripts/build_station_layer.py`) with steps for ArcGIS Online, and links to NOAA's own ArcGIS services. The Board's footer downloads the Stations on screen for any other area.
+
 - Terms used on the page: [`CONTEXT.md`](CONTEXT.md)
 - Decisions: [`docs/adr/`](docs/adr/)
 - Tests: `npm test` opens the page in a headless browser with saved feed responses and checks the Layouts, the Map, the links between them, and the flood-level rules. GitHub runs them on every change. To refresh the saved responses, see `tests/record-fixtures.js`.

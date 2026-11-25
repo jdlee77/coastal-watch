@@ -803,3 +803,58 @@ test.describe("Map labels", () => {
     await expect(page.locator(".cw-area-label", { hasText: "Garibaldi" })).toHaveCount(0); // a tide gauge, not an area
   });
 });
+
+test.describe("Data for your own map", () => {
+  const fs = require("fs"), os = require("os"), path = require("path");
+  const { execFileSync } = require("child_process");
+  // The published Oregon Station layer, built the way the publish job builds it
+  const published = () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "layer-"));
+    execFileSync("python3", ["scripts/build_station_layer.py", "data/areas/oregon.json", dir], { cwd: path.join(__dirname, "..") });
+    return JSON.parse(fs.readFileSync(path.join(dir, "oregon.geojson"), "utf8"));
+  };
+  const save = async (page, linkId) => {
+    const [dl] = await Promise.all([page.waitForEvent("download"), page.locator(linkId).click()]);
+    return { name: dl.suggestedFilename(), text: fs.readFileSync(await dl.path(), "utf8") };
+  };
+
+  test("the main page links to the data page", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board");
+    await page.getByRole("link", { name: "Data for your own map" }).click();
+    await expect(page.locator("h1")).toHaveText("Data for your own map");
+  });
+
+  test("Download these Stations for Oregon gives the same Station layer as the published file", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board");
+    const dl = await save(page, "#dlGeojson");
+    expect(dl.name).toBe("oregon-coast-stations.geojson");
+    expect(JSON.parse(dl.text)).toEqual(published());
+  });
+
+  test("Download these Stations for an area from the link gives its Stations as CSV", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board&area=-81.8,28.3,-80.4,30.5&name=First%20Coast", { moment: "florida" });
+    const dl = await save(page, "#dlCsv");
+    expect(dl.name).toBe("first-coast-stations.csv");
+    const lines = dl.text.trim().split("\n");
+    expect(lines[0]).toBe("operator,network,station_id,nws_id,name,kind,coastal_area,latitude,longitude,station_page,nws_page,data_url");
+    expect(lines).toHaveLength(1 + 36);
+    expect(dl.text).toContain('Scripps,CDIP,194,,"St. Augustine, FL",wave buoy,Mayport (Bar Pilots Dock),'); // a name with a comma is quoted
+    expect(dl.text).toContain(",NWPS,JNHF1,JNHF1,Lake George at Juniper Hunt Club,river gauge,");
+    expect(dl.text).not.toMatch(/\d ft\b|,(action|minor|moderate|major|below flood),/); // no Readings or Threshold levels
+  });
+
+  test("the data page gives the Oregon file addresses, steps for ArcGIS and NOAA's own services", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto("/feeds.html");
+    await expect(page.locator("#oregon code").first()).toHaveText("http://localhost:8787/data/stations/oregon.geojson");
+    await expect(page.locator("#oregon code").nth(1)).toHaveText("http://localhost:8787/data/stations/oregon.csv");
+    await expect(page.locator("#oregon")).toContainText("Add layer from URL");
+    for (const svc of ["riv_gauges/MapServer/0", "CO_OPS_Stations/FeatureServer/0", "NDBCBuoys/MapServer/0"])
+      await expect(page.locator("#noaa")).toContainText(svc);
+    await expect(page.locator("#noaa")).toContainText("CDIP (Scripps) publishes no ArcGIS service");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390); // no sideways scroll on a phone
+  });
+});
