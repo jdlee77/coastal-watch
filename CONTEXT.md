@@ -98,3 +98,9 @@ _Avoid_: Wall mode, dual view
 **Compact**:
 A mode of the Board that shows one line per Coastal area, worst Area status first, with only its most urgent Reading.
 _Avoid_: Mobile mode, summary view
+
+## Sharing
+
+**Station layer**:
+A published file listing an Area of responsibility's Stations, with each Station's location, Coastal area and links to its operator's page and live data, for adding to another mapping platform. It holds no Readings.
+_Avoid_: Data feed (the operators' sources are the feeds), export, dataset
