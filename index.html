@@ -119,6 +119,7 @@ main { padding: 12px 16px 32px; display: grid; gap: 12px;
 body.compact .explain { display: none; }
 .err { color: var(--moderate); }
 .banner { margin: 12px 16px 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--minor); }
+.banner.note { border-color: var(--line); color: var(--muted); }
 /* Compact view: one line per area, worst first */
 body.compact main { grid-template-columns: 1fr; gap: 6px; }
 body.compact .st:not(.top), body.compact .legend .full { display: none; }
@@ -367,7 +368,12 @@ async function discoverArea(bbox, name) {
   // Without the NWS search the tide gauges still show, with a note.
   const [list, nwps, cdip] = await Promise.all([getJSON(COOPS_LIST), getJSON(nwpsSearch(bbox)).catch(() => null),
     cdipBuoys().catch(() => null)]);
-  const tides = (list.stations || []).filter(st => inBox(bbox, st.lat, st.lng)).map(st => ({
+  const inside = (list.stations || []).filter(st => inBox(bbox, st.lat, st.lng));
+  // Tide gauges with no tidal datum are left out (ADR 0003): Great Lakes stations, and stations
+  // with no MLLW. They have no tide prediction or MLLW reading, so no Surge. Counted for a note.
+  const noDatum = await Promise.all(inside.map(st => st.greatlakes ? true : mllwOf(st.id).then(m => m == null, () => false)));
+  const leftOut = inside.filter((st, i) => noDatum[i]).length;
+  const tides = inside.filter((st, i) => !noDatum[i]).map(st => ({
     network: "CO-OPS", operator: "NOAA", station_id: st.id, nws_id: st.shefcode || "", kind: "tide_gauge",
     name: st.name, lat: st.lat, lon: st.lng, time_zone: coopsZone(st), office: null, also_serves: [],
   }));
@@ -426,7 +432,9 @@ async function discoverArea(bbox, name) {
   const order = new Map(anchors.map((s, i) => [s.area, i + 1]));
   const stations = [...tides, ...rivers, ...buoys];
   for (const s of stations) s.area_order = order.get(s.area);
-  return { name: name || "Custom area", linkName: name || "", bbox, stations, fromLink: true, riversMissing: !nwps, buoysMissing: !cdip };
+  return { name: name || "Custom area", linkName: name || "", bbox, stations, fromLink: true, riversMissing: !nwps, buoysMissing: !cdip, leftOut,
+           // Left-out tide gauges still tell the area's time zone.
+           time_zone: areaTimeZone(inside.map(st => ({ time_zone: coopsZone(st) }))) };
 }
 
 // The area's time zone: the one most of its Stations use.
@@ -447,17 +455,27 @@ const SOURCES = {
   nws: { tag: "NWS", title: "NWS forecast office flood level" },
   nos: { tag: "NOAA", title: "NOAA derived flood level (national formula)" },
 };
+// A tide gauge's MLLW datum (its value in station datum), or null when it has none. Read once per station.
+const datumCache = {};
+function mllwOf(id) {
+  return datumCache[id] || (datumCache[id] = getJSON(MDAPI + id + "/datums.json")
+    .then(dat => { const m = (dat.datums || []).find(d => d.name === "MLLW"); return m ? m.value : null; })
+    .catch(e => { delete datumCache[id]; throw e; }));
+}
+// CO-OPS field for each Threshold level. The NWS action level is published as "action";
+// the NOAA formula has no action level.
+const FLOOD_FIELD = { nws: { action: "action", minor: "nws_minor", moderate: "nws_moderate", major: "nws_major" },
+                      nos: { minor: "nos_minor", moderate: "nos_moderate", major: "nos_major" } };
 async function tideThresholds(id) {
   if (metaCache[id]) return metaCache[id];
-  const [fl, dat] = await Promise.all([getJSON(MDAPI + id + "/floodlevels.json"), getJSON(MDAPI + id + "/datums.json")]);
-  const mllw = (dat.datums || []).find(d => d.name === "MLLW");
+  const [fl, mllw] = await Promise.all([getJSON(MDAPI + id + "/floodlevels.json"), mllwOf(id)]);
   // Flood levels are published against station datum; convert to MLLW.
   const sets = ["nws", "nos"].map(key => {
+    const fields = Object.entries(FLOOD_FIELD[key]);
     let thr = null;
-    if (mllw && ["minor", "moderate", "major"].some(k => fl[key + "_" + k] != null)) {
+    if (mllw != null && fields.some(([, f]) => fl[f] != null)) {
       thr = {};
-      for (const k of ["minor", "moderate", "major"])
-        thr[k] = fl[key + "_" + k] != null ? +(fl[key + "_" + k] - mllw.value).toFixed(1) : null;
+      for (const [k, f] of fields) thr[k] = fl[f] != null ? +(fl[f] - mllw).toFixed(1) : null;
     }
     return { key, thr };
   });
@@ -861,7 +879,7 @@ async function refresh() {
     if (!def || def.riversMissing || def.buoysMissing) {
       const h = parseHash();
       def = h.area ? await discoverArea(h.area, h.name) : await loadAreaDefinition();
-      setTimeZone(areaTimeZone(def.stations));
+      setTimeZone(def.time_zone || areaTimeZone(def.stations));
       document.getElementById("areaName").textContent = def.name;
     }
     const stations = def.stations;
@@ -879,7 +897,10 @@ async function refresh() {
     renderOffices(stations, readings);
     for (const a of areas) a.items.sort((x, y) => x.nearby - y.nearby || KIND_ORDER[x.s.kind] - KIND_ORDER[y.s.kind]);
     const failed = [...readings.values()].filter(r => r.error).length;
-    document.getElementById("banner").innerHTML = (def.riversMissing
+    const n = def.leftOut || 0;
+    document.getElementById("banner").innerHTML = (n
+      ? `<div class="banner note" id="leftOut">${n} tide ${n === 1 ? "gauge is" : "gauges are"} left out: Great Lakes stations and stations with no tidal datum have no tide prediction or MLLW datum, so there is no Surge and no MLLW reading. River gauges and buoys there still show.</div>` : "") +
+      (def.riversMissing
       ? `<div class="banner">The NWS river gauge list could not be read, so river gauges are missing. The page tries again at the next refresh.</div>` : "") +
       (def.buoysMissing
       ? `<div class="banner">The CDIP buoy list could not be read, so CDIP wave buoys are missing. The page tries again at the next refresh.</div>` : "") +
