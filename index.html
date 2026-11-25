@@ -202,6 +202,8 @@ footer a { color: inherit; }
   Tide water levels are feet above MLLW; river levels are gage stage in feet. Times are local to the area, with the zone shown.
   Not an official warning product. For tsunami, follow the <a href="https://www.tsunami.gov/">National Tsunami Warning Center</a>.
   Background map: <a href="https://www.usgs.gov/programs/national-geospatial-program/national-map">USGS The National Map</a>.
+  <p id="share"><b><a href="feeds.html">Data for your own map</a></b> (ArcGIS, QGIS and others) ·
+    Download these Stations: <a href="#" id="dlGeojson" download>GeoJSON</a> · <a href="#" id="dlCsv" download>CSV</a></p>
 </footer>
 </section>
 </div>
@@ -697,6 +699,60 @@ function renderBoard() {
       ${a.items.map(x => stationHTML(x, x === top)).join("")}</section>`;
   }).join("");
 }
+
+// ---- Station layer (CONTEXT.md "Station layer") -------------------------
+// The Stations on screen as a file for another mapping platform: IDs, location, Coastal area and
+// links, no Readings. scripts/build_station_layer.py builds the same fields for the published
+// Oregon files; a test checks the two agree.
+const LAYER_KIND = { tide_gauge: "tide gauge", river_gage: "river gauge", wave_buoy: "wave buoy" };
+const LAYER_FIELDS = ["operator", "network", "station_id", "nws_id", "name", "kind", "coastal_area",
+                      "latitude", "longitude", "station_page", "nws_page", "data_url"];
+function stationLinks(s) {
+  const id = s.station_id, nws = s.nws_id;
+  const nwsPage = s.kind === "river_gage" && nws ? `https://water.noaa.gov/gauges/${nws}` : "";
+  switch (s.network) {
+    case "CO-OPS": return [`https://tidesandcurrents.noaa.gov/stationhome.html?id=${id}`, nwsPage,
+      `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=water_level&date=latest&datum=MLLW&units=english&time_zone=gmt&format=json&station=${id}`];
+    case "USGS": return [`https://waterdata.usgs.gov/monitoring-location/USGS-${id}/`, nwsPage,
+      nws ? `https://api.water.noaa.gov/nwps/v1/gauges/${nws}/stageflow/observed` : ""];
+    case "NWPS": return [`https://water.noaa.gov/gauges/${id}`, nwsPage, `https://api.water.noaa.gov/nwps/v1/gauges/${id}/stageflow/observed`];
+    case "NDBC": return [`https://www.ndbc.noaa.gov/station_page.php?station=${id}`, "", `https://www.ndbc.noaa.gov/data/realtime2/${id}.txt`];
+    case "CDIP": return [`https://cdip.ucsd.edu/m/products/?stn=${id}p1`, "", `https://thredds.cdip.ucsd.edu/thredds/dodsC/cdip/realtime/${id}p1_rt.nc.html`];
+    default: return ["", nwsPage, ""];
+  }
+}
+function stationLayerRows(stations) {
+  return stations.map(s => {
+    const [station_page, nws_page, data_url] = stationLinks(s);
+    return { operator: s.operator, network: s.network, station_id: s.station_id, nws_id: s.nws_id || "", name: s.name,
+             kind: LAYER_KIND[s.kind] || s.kind, coastal_area: s.area, latitude: +s.lat, longitude: +s.lon, station_page, nws_page, data_url };
+  });
+}
+function layerGeojson(name, rows) {
+  return { type: "FeatureCollection", name: name + " Stations", features: rows.map(r => ({
+    type: "Feature", geometry: { type: "Point", coordinates: [r.longitude, r.latitude] },
+    properties: Object.fromEntries(LAYER_FIELDS.filter(k => k !== "latitude" && k !== "longitude").map(k => [k, r[k]])) })) };
+}
+function layerCsv(rows) {
+  const cell = v => { const t = String(v ?? ""); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  return [LAYER_FIELDS.join(","), ...rows.map(r => LAYER_FIELDS.map(k => cell(r[k])).join(","))].join("\n") + "\n";
+}
+const fileStem = name => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "stations";
+function download(filename, type, text) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: filename });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+document.getElementById("dlGeojson").onclick = e => {
+  e.preventDefault(); if (!def) return;
+  download(fileStem(def.name) + "-stations.geojson", "application/geo+json",
+           JSON.stringify(layerGeojson(def.name, stationLayerRows(def.stations)), null, 1));
+};
+document.getElementById("dlCsv").onclick = e => {
+  e.preventDefault(); if (!def) return;
+  download(fileStem(def.name) + "-stations.csv", "text/csv", layerCsv(stationLayerRows(def.stations)));
+};
 
 // ---- Map ---------------------------------------------------------------
 const COLORS = () => { const cs = getComputedStyle(document.documentElement);

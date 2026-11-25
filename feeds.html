@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coastal Watch data</title>
+<meta name="description" content="Coastal Watch's Stations as a layer for ArcGIS, QGIS and other mapping platforms, and NOAA's own map services.">
+<style>
+:root { --bg: #f3f5f7; --card: #ffffff; --ink: #14202b; --muted: #5a6875; --line: #d6dde3; --link: #1565c0; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0d141b; --card: #16212b; --ink: #e8eef3; --muted: #9aabba; --line: #2a3946; --link: #64b5f6; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 1rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 16px; }
+header a { color: var(--muted); font-size: .9rem; }
+h1 { font-size: 1.4rem; margin: 4px 0 0; }
+main { max-width: 52rem; margin: 0 auto; padding: 8px 16px 40px; }
+section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 4px 16px 12px; margin-top: 16px; }
+h2 { font-size: 1.15rem; margin: 12px 0 6px; }
+a { color: var(--link); }
+p, li { max-width: 46rem; }
+.muted { color: var(--muted); font-size: .9rem; }
+.url { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+.url code { flex: 1 1 18rem; min-width: 0; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line);
+            border-radius: 6px; padding: 5px 8px; font-size: .85rem; }
+.url .label { flex: 0 0 5.5rem; font-weight: 600; }
+button { font: inherit; font-size: .85rem; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line);
+         background: var(--bg); color: var(--ink); cursor: pointer; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-top: 1px solid var(--line); }
+td code { overflow-wrap: anywhere; font-size: .8rem; }
+@media (max-width: 640px) { table, tbody, tr, td { display: block; } thead { display: none; } td { border: 0; padding: 2px 0; } tr { border-top: 1px solid var(--line); padding: 8px 0; } }
+</style>
+</head>
+<body>
+<header>
+  <a href="./">← Coastal Watch</a>
+  <h1>Data for your own map</h1>
+</header>
+<main>
+<p>Add Coastal Watch's Stations to ArcGIS Online, ArcGIS Pro, QGIS or another mapping platform.
+  A <b>Station layer</b> lists each Station's location, Coastal area and links to its operator's page and live data.
+  It holds no Readings: for current water levels and flood levels, use Coastal Watch itself or the NOAA services below.</p>
+
+<section id="oregon">
+  <h2>Oregon coast Station layer</h2>
+  <p>Every Station Coastal Watch shows for the Oregon coast. These addresses stay the same; the files are rebuilt each time the site is published, so they follow the station list.</p>
+  <div class="url"><span class="label">GeoJSON</span><code data-file="data/stations/oregon.geojson"></code><button type="button">Copy</button></div>
+  <div class="url"><span class="label">CSV</span><code data-file="data/stations/oregon.csv"></code><button type="button">Copy</button></div>
+  <p class="muted">Fields: operator, network, station_id, nws_id, name, kind (tide gauge, river gauge or wave buoy), coastal_area,
+    latitude and longitude (CSV only; GeoJSON carries them as the point), station_page (the operator's page),
+    nws_page (river gauges: the NWS page with flood stages and forecasts) and data_url (the live Readings, for a program).</p>
+  <h2>Add it to ArcGIS Online</h2>
+  <ol>
+    <li>Open <b>Map Viewer</b> and choose <b>Add</b> → <b>Add layer from URL</b>.</li>
+    <li>Paste the GeoJSON address above. ArcGIS recognizes it as GeoJSON.</li>
+    <li>Choose <b>Add to map</b>, then style it, for example by <code>kind</code> or <code>coastal_area</code>.</li>
+  </ol>
+  <p class="muted">In ArcGIS Pro or QGIS, add the same address as a GeoJSON or CSV layer.
+    The Stations change rarely, so a refresh interval is not needed.</p>
+</section>
+
+<section id="other-areas">
+  <h2>Other areas</h2>
+  <p>For any other Area of responsibility, open it in Coastal Watch (with <b>Choose area</b> on the Map, or a saved link),
+    then use <b>Download these Stations</b> at the bottom of the Board. You get a GeoJSON or CSV file with the same fields
+    for the Stations on screen. It is a one-off file, not a fixed address: download it again if the area's Stations change.</p>
+</section>
+
+<section id="noaa">
+  <h2>NOAA's own map services</h2>
+  <p>NOAA publishes some of the same networks as ArcGIS services, kept up to date by NOAA. Add them in ArcGIS with
+    <b>Add layer from URL</b>. Coastal Watch does not run these services.</p>
+  <table>
+    <thead><tr><th>Network</th><th>Service and layer</th><th>What it shows</th></tr></thead>
+    <tbody>
+      <tr><td>NWS river gauges</td>
+        <td><a href="https://mapservices.weather.noaa.gov/eventdriven/rest/services/water/riv_gauges/MapServer">River Gauge Current and Forecast Flood Stages</a><br>
+          layer 0, Observed River Stages<br><code>https://mapservices.weather.noaa.gov/eventdriven/rest/services/water/riv_gauges/MapServer/0</code></td>
+        <td>Current river stage and flood category at NWS gauges nationwide; forecast layers follow.</td></tr>
+      <tr><td>NOAA tide gauges (CO-OPS)</td>
+        <td><a href="https://mapservices.weather.noaa.gov/static/rest/services/NOS_Observations/CO_OPS_Stations/FeatureServer">CO-OPS Stations</a><br>
+          layer 0, Waterlevel_Active_Stations<br><code>https://mapservices.weather.noaa.gov/static/rest/services/NOS_Observations/CO_OPS_Stations/FeatureServer/0</code></td>
+        <td>Locations of active water-level stations. Station locations only, not live water levels.</td></tr>
+      <tr><td>NDBC buoys</td>
+        <td><a href="https://gis.ncdc.noaa.gov/arcgis/rest/services/ms/NDBCBuoys/MapServer/0">Buoys - NDBC</a><br>
+          <code>https://gis.ncdc.noaa.gov/arcgis/rest/services/ms/NDBCBuoys/MapServer/0</code></td>
+        <td>Buoy locations, with a link to each buoy's NDBC page. No wave readings.</td></tr>
+      <tr><td>CDIP wave buoys</td><td>None</td>
+        <td>CDIP (Scripps) publishes no ArcGIS service. Its buoys are in the Station layer above.</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">Checked 25 November 2026. The CO-OPS GIS Data Portal lists more of NOAA's tide and current services:
+    <a href="https://tidesandcurrents.noaa.gov/gis-data-portal/">tidesandcurrents.noaa.gov/gis-data-portal</a>.</p>
+</section>
+</main>
+<script>
+"use strict";
+// Show each file's full address (it depends on where the site is published) and copy it on request.
+for (const row of document.querySelectorAll(".url")) {
+  const code = row.querySelector("code"), href = new URL(code.dataset.file, location.href).href;
+  code.textContent = href;
+  row.querySelector("button").onclick = async e => {
+    try { await navigator.clipboard.writeText(href); e.target.textContent = "Copied"; }
+    catch (err) { getSelection().selectAllChildren(code); e.target.textContent = "Press Ctrl+C"; }
+    setTimeout(() => { e.target.textContent = "Copy"; }, 2000);
+  };
+}
+</script>
+</body>
+</html>
