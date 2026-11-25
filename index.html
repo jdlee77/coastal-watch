@@ -11,10 +11,11 @@
   --normal: #2e7d32; --nothr: #607d8b; --nodata: #9aa5ae;
   /* NWS hydrograph colors */
   --action: #ffff00; --minor: #ff9900; --moderate: #ff0000; --major: #cc33ff;
+  --nws: #1565c0; --nos: #00796b;
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #0d141b; --card: #16212b; --ink: #e8eef3; --muted: #9aabba; --line: #2a3946;
-          --normal: #4caf50; --nothr: #78909c; --nodata: #5f6b75; }
+          --normal: #4caf50; --nothr: #78909c; --nodata: #5f6b75; --nws: #64b5f6; --nos: #4db6ac; }
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink);
@@ -56,6 +57,16 @@ main { padding: 12px 16px 32px; display: grid; gap: 12px;
 .chip.nodata { background: var(--nodata); color: #000; }
 .chip.stale, .chip.offline { background: transparent; color: var(--ink); border: 1px dashed var(--ink); }
 .chip.near { background: transparent; color: var(--muted); border-color: var(--line); }
+.chip.src { background: transparent; font-size: .7rem; padding: 0 6px; }
+.chip.src.nws { color: var(--nws); border-color: var(--nws); }
+.chip.src.nos { color: var(--nos); border-color: var(--nos); }
+.chip.differ { background: transparent; color: var(--ink); border: 2px solid var(--minor); }
+.explain { margin: 8px 16px 0; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+           padding: 6px 12px; font-size: .9rem; }
+.explain summary { cursor: pointer; font-weight: 600; }
+.explain dt { margin-top: 8px; font-weight: 600; }
+.explain dd { margin: 2px 0 0 0; color: var(--muted); }
+body.compact .explain { display: none; }
 .err { color: var(--moderate); }
 .banner { margin: 12px 16px 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--minor); }
 /* Compact view: one line per area, worst first */
@@ -75,6 +86,25 @@ footer a { color: inherit; }
   <button id="compact" type="button" aria-pressed="false">Compact</button>
 </header>
 <div class="legend" id="legend"></div>
+<details class="explain" id="explain">
+  <summary>Flood level sources: what the <span class="chip src nws">NWS</span> and <span class="chip src nos">NOAA</span> tags mean</summary>
+  <dl>
+    <dt><span class="chip src nws">NWS</span> NWS forecast office flood levels</dt>
+    <dd>Set locally by the National Weather Service office for that stretch of coast: <b>NWS Portland</b> from Astoria to Florence,
+        <b>NWS Medford</b> from Reedsport south. Each gauge names its office. These are the levels the office uses when it issues Coastal Flood
+        Advisories and Warnings, and the flood stages on NWS river hydrographs. Rivers have NWS levels only.</dd>
+    <dt><span class="chip src nos">NOAA</span> NOAA derived flood levels</dt>
+    <dd>Calculated by NOAA's National Ocean Service with one nationwide formula from each tide gauge's tide range
+        (NOAA Technical Report NOS CO-OPS 086, 2018). Used in NOAA's high-tide flooding reports and outlooks. No forecast office
+        sets them, and on the Oregon coast they are usually <b>lower</b> than the NWS levels, so they turn orange sooner.</dd>
+    <dt><span class="chip differ">sources differ</span></dt>
+    <dd>The two sources put the same Reading at different levels. The color shown is the higher of the two, so neither agency's
+        level is hidden, and the chip names the source it came from. Before acting, confirm with the forecast office named
+        on that gauge which level it is working from.</dd>
+    <dt>"none published for this gauge"</dt>
+    <dd>NOAA's station records hold no levels from that source. For NWS, ask the named office whether it uses a local level.</dd>
+  </dl>
+</details>
 <div id="banner"></div>
 <main id="areas"></main>
 <footer>
@@ -143,21 +173,38 @@ const COOPS = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?datum=M
 const MDAPI = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/";
 const metaCache = {};
 
+// Threshold sources. Both are shown side by side so the analyst can confirm
+// with each forecast office which levels they are working from.
+const OFFICES = { PQR: "NWS Portland", MFR: "NWS Medford", PDT: "NWS Pendleton" };
+const SOURCES = {
+  nws: { tag: "NWS", title: "NWS forecast office flood level" },
+  nos: { tag: "NOAA", title: "NOAA derived flood level (national formula)" },
+};
 async function tideThresholds(id) {
   if (metaCache[id]) return metaCache[id];
   const [fl, dat] = await Promise.all([getJSON(MDAPI + id + "/floodlevels.json"), getJSON(MDAPI + id + "/datums.json")]);
   const mllw = (dat.datums || []).find(d => d.name === "MLLW");
-  let thr = null, src = null;
-  // Flood levels are published against station datum; convert to MLLW. Prefer NWS, else NOAA NOS.
-  for (const [pre, name] of [["nws", "NWS"], ["nos", "NOAA"]]) {
-    if (fl[pre + "_minor"] != null && mllw) {
+  // Flood levels are published against station datum; convert to MLLW.
+  const sets = ["nws", "nos"].map(key => {
+    let thr = null;
+    if (mllw && ["minor", "moderate", "major"].some(k => fl[key + "_" + k] != null)) {
       thr = {};
       for (const k of ["minor", "moderate", "major"])
-        thr[k] = fl[pre + "_" + k] != null ? +(fl[pre + "_" + k] - mllw.value).toFixed(2) : null;
-      src = name; break;
+        thr[k] = fl[key + "_" + k] != null ? +(fl[key + "_" + k] - mllw.value).toFixed(1) : null;
     }
-  }
-  return (metaCache[id] = { thr, src });
+    return { key, thr };
+  });
+  return (metaCache[id] = sets);
+}
+// Evaluate a value against every Threshold set; the station takes the worst level
+// any source gives, so a warning from either agency is never hidden.
+function judge(value, sets) {
+  const per = sets.map(s => ({ ...s, level: levelOf(value, s.thr) }));
+  const withThr = per.filter(s => s.level != null);
+  if (!withThr.length) return { level: null, by: [], differ: false, per };
+  const worst = withThr.reduce((a, s) => rank(s.level) > rank(a) ? s.level : a, "normal");
+  return { level: worst, by: withThr.filter(s => s.level === worst).map(s => s.key),
+           differ: new Set(withThr.map(s => s.level)).size > 1, per };
 }
 
 async function tideGauge(s) {
@@ -169,6 +216,7 @@ async function tideGauge(s) {
     getJSON(`${COOPS}&station=${id}&product=predictions&interval=hilo&begin_date=${b}&end_date=${e}`),
     tideThresholds(id),
   ]);
+  const office = OFFICES[s.nws_office] || "the NWS forecast office";
   const o = obs.data && obs.data[0];
   if (!o) throw new Error(obs.error ? obs.error.message : "no data");
   const t = coopsTime(o.t), v = parseFloat(o.v);
@@ -177,9 +225,9 @@ async function tideGauge(s) {
   const nextHigh = (hilo.predictions || []).map(x => ({ t: coopsTime(x.t), v: parseFloat(x.v), type: x.type }))
                    .find(x => x.type === "H" && x.t > now);
   const fc = nextHigh ? { t: nextHigh.t, v: nextHigh.v, label: "Next high tide (predicted)",
-                          level: levelOf(nextHigh.v, meta.thr) } : null;
-  return { t, value: v, display: ft(v), surge, thr: meta.thr, thrSrc: meta.src, forecast: fc,
-           level: levelOf(v, meta.thr) };
+                          j: judge(nextHigh.v, meta) } : null;
+  const j = judge(v, meta);
+  return { t, value: v, display: ft(v), surge, office, j, level: j.level, forecast: fc };
 }
 
 async function riverGage(s) {
@@ -199,10 +247,11 @@ async function riverGage(s) {
   if (f && f.data && f.data.length) {
     const crest = f.data.reduce((a, b) => (b.primary > a.primary ? b : a));
     fc = { t: new Date(crest.validTime), v: crest.primary, label: "Forecast crest (NWS)",
-           level: levelOf(crest.primary, any ? thr : null) };
+           j: judge(crest.primary, [{ key: "nws", thr: any ? thr : null }]) };
   }
-  return { t, value: v, display: ft(v), thr: any ? thr : null, thrSrc: "NWS", forecast: fc,
-           level: levelOf(v, any ? thr : null) };
+  const office = g.wfo && g.wfo.name ? "NWS " + g.wfo.name : "the NWS forecast office";
+  const j = judge(v, [{ key: "nws", thr: any ? thr : null }]);
+  return { t, value: v, display: ft(v), office, j, level: j.level, forecast: fc };
 }
 
 let wavesCache = null;
@@ -214,7 +263,7 @@ async function waveBuoy(s) {
   if (r.period_s != null) bits.push(Math.round(r.period_s) + " s");
   if (r.direction_deg != null) bits.push("from " + compass(r.direction_deg) + " (" + Math.round(r.direction_deg) + "°)");
   return { t: new Date(r.time), value: r.height_ft, display: ft(r.height_ft), detail: bits.join(", "),
-           thr: null, level: null };
+           j: null, level: null };
 }
 
 async function readStation(s) {
@@ -253,27 +302,44 @@ function chip(level, text) { return `<span class="chip ${level}">${esc(text || l
 function levelChip(r) {
   if (r.error || r.fresh === "offline") return chip("nodata", r.fresh === "offline" && !r.error ? "offline" : "no data");
   if (r.level == null) return chip("nothr", "no threshold");
-  return chip(r.level, r.level === "normal" ? "below flood" : r.level);
+  // When sources disagree, say which one gives the level shown.
+  const who = r.j && r.j.differ ? " · " + r.j.by.map(k => SOURCES[k].tag).join("+") : "";
+  return chip(r.level, (r.level === "normal" ? "below flood" : r.level) + who);
+}
+function srcTag(key) { return `<span class="chip src ${key}" title="${esc(SOURCES[key].title)}">${SOURCES[key].tag}</span>`; }
+const lvlText = l => l === "normal" ? "below flood" : l;
+// One line per Threshold source: tag, who sets it, the levels, and the result for this Reading.
+function thresholdLines(r) {
+  if (!r.j) return [];
+  return r.j.per.map(s => {
+    const who = s.key === "nws" ? r.office.replace(/^NWS /, "") + " office flood levels" : "derived flood levels (national formula)";
+    if (!s.thr) return `${srcTag(s.key)} ${esc(who)}: none published for this gauge` +
+                       (s.key === "nws" ? ` (confirm with ${esc(r.office)})` : "");
+    const parts = LEVELS.slice(1).filter(k => s.thr[k] != null).map(k => `${k} ${s.thr[k]}`);
+    return `${srcTag(s.key)} ${esc(who)}: ${esc(parts.join(" · "))} ft → ${chip(s.level, lvlText(s.level))}`;
+  });
 }
 function stationHTML(x, top) {
   const s = x.s, r = x.r;
   const cls = ["st", x.nearby ? "nearby" : "", top ? "top" : "", r.fresh ? "is-" + r.fresh : ""].join(" ");
-  const tags = [x.nearby ? chip("near", "nearby") : "", r.fresh === "stale" ? chip("stale", "stale") : ""].join(" ");
+  const tags = [x.nearby ? chip("near", "nearby") : "", r.fresh === "stale" ? chip("stale", "stale") : "",
+                r.j && r.j.differ ? chip("differ", "sources differ") : ""].join(" ");
   let sub = [];
-  if (r.surge != null) sub.push(`Surge ${r.surge >= 0 ? "+" : "−"}${Math.abs(r.surge).toFixed(1)} ft vs predicted tide`);
-  if (r.detail) sub.push(r.detail);
-  if (r.thr) {
-    const parts = LEVELS.slice(1).filter(k => r.thr[k] != null).map(k => `${k} ${r.thr[k]}`);
-    sub.push(`Thresholds (${r.thrSrc}): ${parts.join(" · ")} ft`);
+  if (r.surge != null) sub.push(esc(`Surge ${r.surge >= 0 ? "+" : "−"}${Math.abs(r.surge).toFixed(1)} ft vs predicted tide`));
+  if (r.detail) sub.push(esc(r.detail));
+  sub.push(...thresholdLines(r));
+  if (r.forecast) {
+    const fj = r.forecast.j;
+    const fl = fj && fj.level && fj.level !== "normal"
+      ? " " + chip(fj.level, fj.level + (fj.differ ? " · " + fj.by.map(k => SOURCES[k].tag).join("+") : "")) : "";
+    sub.push(esc(`${r.forecast.label}: ${ft(r.forecast.v)} ${fmtDayTime.format(r.forecast.t)}`) + fl);
   }
-  if (r.forecast) sub.push(`${r.forecast.label}: ${ft(r.forecast.v)} ${fmtDayTime.format(r.forecast.t)}` +
-                           (r.forecast.level && r.forecast.level !== "normal" ? " " + chip(r.forecast.level) : ""));
   const time = r.error ? `<span class="err">Could not get a Reading: ${esc(r.error)}</span>`
              : `<span class="time ${r.fresh !== "fresh" ? "stale" : ""}">${fmtTime.format(r.t)} PT (${ageText(r.t)})${r.fresh === "offline" ? " · offline" : ""}</span>`;
   return `<div class="${cls}">
     <div class="name">${esc(s.name)} <span class="kind">${KIND_LABEL[s.kind]}${x.nearby ? " · from " + esc(s.area) : ""}</span> ${tags}</div>
     <div class="val">${r.error ? "–" : esc(r.display)} ${levelChip(r)}</div>
-    ${sub.length ? `<div class="sub">${sub.map(t => t.includes("<span") ? t : esc(t)).join("<br>")}</div>` : ""}
+    ${sub.length ? `<div class="sub">${sub.join("<br>")}</div>` : ""}
     <div class="sub">${time}</div>
   </div>`;
 }
@@ -300,7 +366,8 @@ function render() {
 function legend() {
   document.getElementById("legend").innerHTML =
     ["action", "minor", "moderate", "major"].map(l => chip(l)).join(" ") + " " +
-    chip("normal", "below flood") + " " + chip("nothr", "no threshold") + " " + chip("nodata", "no current data") +
+    chip("normal", "below flood") + " " + chip("nothr", "no threshold") + " " + chip("nodata", "no current data") + " " +
+    chip("differ", "sources differ") +
     ` <span class="full">· <b>stale</b> = late by more than twice the usual reporting interval; <b>offline</b> = over 24 h old</span>`;
 }
 

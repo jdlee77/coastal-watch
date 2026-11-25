@@ -1,28 +1,28 @@
-area_order,area,kind,network,operator,station_id,nws_id,name,also_serves,verified,verified_on,notes
-1,Columbia River mouth,tide_gauge,CO-OPS,NOAA,9439040,,Astoria (Tongue Point),,yes,2026-11-25,
-1,Columbia River mouth,wave_buoy,NDBC,NOAA,46029,,Columbia River Bar,Tillamook Bay,yes,2026-11-25,20 nm west of the river mouth
-1,Columbia River mouth,wave_buoy,CDIP,Scripps,162,,Clatsop Spit,,yes,2026-11-25,
-1,Columbia River mouth,wave_buoy,CDIP,Scripps,179,,Astoria Canyon,,yes,2026-11-25,
-2,Tillamook Bay,tide_gauge,CO-OPS,NOAA,9437540,,Garibaldi,Nestucca / Lincoln City,yes,2026-11-25,No published flood levels
-2,Tillamook Bay,river_gage,USGS,USGS,14301000,FSSO3,Nehalem River near Foss,,yes,2026-11-25,
-2,Tillamook Bay,river_gage,USGS,USGS,14301500,TLMO3,Wilson River near Tillamook,,yes,2026-11-25,
-2,Tillamook Bay,river_gage,USGS,USGS,14302480,TRAO3,Trask River near Tillamook,,yes,2026-11-25,
-2,Tillamook Bay,wave_buoy,NDBC,NOAA,46089,,Tillamook,Nestucca / Lincoln City,yes,2026-11-25,
-3,Nestucca / Lincoln City,river_gage,USGS,USGS,14303600,BEAO3,Nestucca River near Beaver,,yes,2026-11-25,
-3,Nestucca / Lincoln City,river_gage,USGS,USGS,14305500,SILO3,Siletz River at Siletz,,yes,2026-11-25,
-4,Newport,tide_gauge,CO-OPS,NOAA,9435380,,South Beach,Nestucca / Lincoln City;Florence,yes,2026-11-25,
-4,Newport,river_gage,USGS,USGS,14306500,TIDO3,Alsea River near Tidewater,,yes,2026-11-25,
-4,Newport,wave_buoy,NDBC,NOAA,46050,,Stonewall Bank,Florence,yes,2026-11-25,20 nm west of Newport; wave sensor not reporting on 2026-11-25
-4,Newport,wave_buoy,CDIP,Scripps,277,,PacWave South,,no,2026-11-25,Not in CDIP real-time data on 2026-11-25
-4,Newport,wave_buoy,CDIP,Scripps,278,,PacWave South,,no,2026-11-25,Not in CDIP real-time data on 2026-11-25
-4,Newport,wave_buoy,CDIP,Scripps,280,,PacWave South,,no,2026-11-25,Not in CDIP real-time data on 2026-11-25
-5,Florence,river_gage,USGS,USGS,14307620,MPLO3,Siuslaw River near Mapleton,,yes,2026-11-25,
-6,Reedsport,river_gage,USGS,USGS,14321000,EKTO3,Umpqua River near Elkton,,yes,2026-11-25,
-6,Reedsport,wave_buoy,CDIP,Scripps,139,,Umpqua Offshore,Florence;Coos Bay / Coquille,yes,2026-11-25,
-7,Coos Bay / Coquille,tide_gauge,CO-OPS,NOAA,9432780,,Charleston,Reedsport,yes,2026-11-25,
-7,Coos Bay / Coquille,river_gage,USGS,USGS,14327055,COQO3,Coquille River at Coquille,,yes,2026-11-25,
-7,Coos Bay / Coquille,river_gage,USGS,USGS,14326510,MYPO3,South Fork Coquille River at Myrtle Point,,yes,2026-11-25,
-7,Coos Bay / Coquille,river_gage,USGS,USGS,14325000,POWO3,South Fork Coquille River at Powers,,yes,2026-11-25,Action stage only
-8,Port Orford / Gold Beach,tide_gauge,CO-OPS,NOAA,9431647,,Port Orford,,yes,2026-11-25,NOAA flagged low water condition in Nov 2026
-8,Port Orford / Gold Beach,river_gage,USGS,USGS,14372300,AGNO3,Rogue River near Agness,,yes,2026-11-25,Action and minor stages only
-8,Port Orford / Gold Beach,wave_buoy,NDBC,NOAA,46015,,Port Orford,,yes,2026-11-25,
+area_order,area,kind,network,operator,station_id,nws_id,nws_office,name,also_serves,verified,verified_on,notes
+1,Columbia River mouth,tide_gauge,CO-OPS,NOAA,9439040,,PQR,Astoria (Tongue Point),,yes,2026-11-25,
+1,Columbia River mouth,wave_buoy,NDBC,NOAA,46029,,,Columbia River Bar,Tillamook Bay,yes,2026-11-25,20 nm west of the river mouth
+1,Columbia River mouth,wave_buoy,CDIP,Scripps,162,,,Clatsop Spit,,yes,2026-11-25,
+1,Columbia River mouth,wave_buoy,CDIP,Scripps,179,,,Astoria Canyon,,yes,2026-11-25,
+2,Tillamook Bay,tide_gauge,CO-OPS,NOAA,9437540,,PQR,Garibaldi,Nestucca / Lincoln City,yes,2026-11-25,No published flood levels
+2,Tillamook Bay,river_gage,USGS,USGS,14301000,FSSO3,,Nehalem River near Foss,,yes,2026-11-25,
+2,Tillamook Bay,river_gage,USGS,USGS,14301500,TLMO3,,Wilson River near Tillamook,,yes,2026-11-25,
+2,Tillamook Bay,river_gage,USGS,USGS,14302480,TRAO3,,Trask River near Tillamook,,yes,2026-11-25,
+2,Tillamook Bay,wave_buoy,NDBC,NOAA,46089,,,Tillamook,Nestucca / Lincoln City,yes,2026-11-25,
+3,Nestucca / Lincoln City,river_gage,USGS,USGS,14303600,BEAO3,,Nestucca River near Beaver,,yes,2026-11-25,
+3,Nestucca / Lincoln City,river_gage,USGS,USGS,14305500,SILO3,,Siletz River at Siletz,,yes,2026-11-25,
+4,Newport,tide_gauge,CO-OPS,NOAA,9435380,,PQR,South Beach,Nestucca / Lincoln City;Florence,yes,2026-11-25,
+4,Newport,river_gage,USGS,USGS,14306500,TIDO3,,Alsea River near Tidewater,,yes,2026-11-25,
+4,Newport,wave_buoy,NDBC,NOAA,46050,,,Stonewall Bank,Florence,yes,2026-11-25,20 nm west of Newport; wave sensor not reporting on 2026-11-25
+4,Newport,wave_buoy,CDIP,Scripps,277,,,PacWave South,,no,2026-11-25,Not in CDIP real-time data on 2026-11-25
+4,Newport,wave_buoy,CDIP,Scripps,278,,,PacWave South,,no,2026-11-25,Not in CDIP real-time data on 2026-11-25
+4,Newport,wave_buoy,CDIP,Scripps,280,,,PacWave South,,no,2026-11-25,Not in CDIP real-time data on 2026-11-25
+5,Florence,river_gage,USGS,USGS,14307620,MPLO3,,Siuslaw River near Mapleton,,yes,2026-11-25,
+6,Reedsport,river_gage,USGS,USGS,14321000,EKTO3,,Umpqua River near Elkton,,yes,2026-11-25,
+6,Reedsport,wave_buoy,CDIP,Scripps,139,,,Umpqua Offshore,Florence;Coos Bay / Coquille,yes,2026-11-25,
+7,Coos Bay / Coquille,tide_gauge,CO-OPS,NOAA,9432780,,MFR,Charleston,Reedsport,yes,2026-11-25,
+7,Coos Bay / Coquille,river_gage,USGS,USGS,14327055,COQO3,,Coquille River at Coquille,,yes,2026-11-25,
+7,Coos Bay / Coquille,river_gage,USGS,USGS,14326510,MYPO3,,South Fork Coquille River at Myrtle Point,,yes,2026-11-25,
+7,Coos Bay / Coquille,river_gage,USGS,USGS,14325000,POWO3,,South Fork Coquille River at Powers,,yes,2026-11-25,Action stage only
+8,Port Orford / Gold Beach,tide_gauge,CO-OPS,NOAA,9431647,,MFR,Port Orford,,yes,2026-11-25,NOAA flagged low water condition in Nov 2026
+8,Port Orford / Gold Beach,river_gage,USGS,USGS,14372300,AGNO3,,Rogue River near Agness,,yes,2026-11-25,Action and minor stages only
+8,Port Orford / Gold Beach,wave_buoy,NDBC,NOAA,46015,,,Port Orford,,yes,2026-11-25,
