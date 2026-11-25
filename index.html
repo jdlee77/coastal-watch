@@ -378,10 +378,20 @@ async function discoverArea(bbox, name) {
     name: g.name.trim(), lat: g.latitude, lon: g.longitude, time_zone: null,
     office: g.wfo && g.wfo.name ? "NWS " + g.wfo.name : null, also_serves: [],
   }));
-  const buoys = (cdip || []).filter(b => inBox(bbox, b.lat, b.lon)).map(b => ({
+  const cdipBuoysHere = (cdip || []).filter(b => inBox(bbox, b.lat, b.lon)).map(b => ({
     network: "CDIP", operator: "Scripps", station_id: b.label.replace(/p1$/, ""), nws_id: "", kind: "wave_buoy",
     name: b.name, lat: b.lat, lon: b.lon, time_zone: null, office: null, also_serves: [],
   }));
+  // NDBC wave stations from the collected national file. About 50 of them are CDIP buoys under
+  // their WMO ID; those are shown once, as CDIP (CDIP's own data).
+  const cdipWmo = new Set((cdip || []).map(b => String(b.wmo || "").toUpperCase()).filter(Boolean));
+  const ndbcHere = Object.entries((wavesCache && wavesCache.stations) || {})
+    .filter(([key, w]) => key.startsWith("NDBC:") && w.lat != null && inBox(bbox, w.lat, w.lon) && !cdipWmo.has(key.slice(5).toUpperCase()))
+    .map(([key, w]) => ({
+      network: "NDBC", operator: "NOAA", station_id: key.slice(5), nws_id: "", kind: "wave_buoy",
+      name: w.name || "NDBC " + key.slice(5), lat: w.lat, lon: w.lon, time_zone: null, office: null, also_serves: [],
+    }));
+  const buoys = [...cdipBuoysHere, ...ndbcHere];
   // The NWS office for a tide gauge: from the NWS gauge with the same ID, where there is one.
   await Promise.all(tides.filter(s => s.nws_id).map(async s => {
     try { const g = await getJSON(NWPS_GAUGE + s.nws_id); if (g.wfo && g.wfo.name) s.office = "NWS " + g.wfo.name; } catch (e) { /* no NWS gauge */ }
@@ -846,6 +856,8 @@ async function refresh() {
   if (busy) return; busy = true;
   document.getElementById("updated").textContent = "Refreshing…";
   try {
+    // The collected wave file also lists the NDBC buoys, so it is read before an area is discovered.
+    try { wavesCache = await getJSON("data/waves.json"); } catch (e) { wavesCache = { stations: {} }; }
     if (!def || def.riversMissing || def.buoysMissing) {
       const h = parseHash();
       def = h.area ? await discoverArea(h.area, h.name) : await loadAreaDefinition();
@@ -853,7 +865,6 @@ async function refresh() {
       document.getElementById("areaName").textContent = def.name;
     }
     const stations = def.stations;
-    try { wavesCache = await getJSON("data/waves.json"); } catch (e) { wavesCache = { stations: {} }; }
     const readings = new Map(await Promise.all(stations.map(async s => [s, await readStation(s)])));
     const byArea = new Map();
     for (const s of stations) {

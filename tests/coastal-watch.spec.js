@@ -423,7 +423,7 @@ test.describe("River gauges in an Area of responsibility from the link", () => {
     await page.setViewportSize(DESK);
     await openGulf(page); // Merrill is 41 miles from Pascagoula NOAA Lab, its closest tide gauge
     const own = area(page, "Pascagoula River at Merrill");
-    await expect(own.locator(".st")).toHaveCount(1);
+    await expect(own.locator(".st:not(.nearby)")).toHaveCount(1); // its only own Station; a Nearby buoy may show too
     await expect(own.locator("#card-NWPS-MRRM6")).toBeVisible();
   });
 
@@ -530,5 +530,46 @@ test.describe("CDIP wave buoys, read directly from CDIP", () => {
     await expect(page.locator("#updated")).toContainText("Refreshed");
     await expect(page.locator("#banner")).toContainText("CDIP wave buoys are missing");
     await expect(page.locator("#card-CO-OPS-8720218")).toBeVisible();
+  });
+});
+
+test.describe("NDBC buoys nationwide, from the collected wave file", () => {
+  const FLORIDA = "#board&area=-81.8,28.3,-80.4,30.5&name=First%20Coast";
+  const openFlorida = (page, opts = {}) => open(page, FLORIDA, { moment: "florida", ...opts });
+
+  test("an NDBC buoy in a non-Oregon area appears in its closest tide gauge's Coastal area, with its Data age", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openFlorida(page);
+    const card = area(page, "Trident Pier, Port Canaveral").locator("#card-NDBC-41070");
+    await expect(card).toContainText("Ponce de Leon Inlet Waves (PNCWAVE)");
+    await expect(card.locator(".val")).toContainText("7.5 ft");
+    await expect(card).toContainText("11 s, from NE (64°)");
+    await expect(card.locator(".time")).toHaveText(/^16:25 EST \(24 min ago\)$/);
+  });
+
+  test("a buoy listed by both NDBC and CDIP appears once, with CDIP's Reading", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    // St. Augustine is CDIP 194 and NDBC 41117; Cape Canaveral Nearshore is CDIP 143 and NDBC 41113.
+    await openFlorida(page, { edit: (key, j) => { // make the two copies differ, to see whose Reading is shown
+      if (key === "waves.json") j.stations["NDBC:41117"].reading.height_ft = 99.9;
+      return j;
+    } });
+    await expect(page.locator("[data-key^='NDBC:411']:not([data-key='NDBC:41070'])")).toHaveCount(0);
+    await expect(page.locator("[data-key='CDIP:194']:not(.nearby)")).toHaveCount(1);
+    await expect(page.locator("#card-CDIP-194 .val")).toContainText("7.9 ft");
+    await expect(page.locator("[data-key='CDIP:143']:not(.nearby)")).toHaveCount(1);
+  });
+
+  test("on the Map, each buoy has one marker", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#map&area=-81.8,28.3,-80.4,30.5", { moment: "florida" });
+    await expect(page.locator(".cw-marker[data-kind=wave_buoy]")).toHaveCount(3); // 194, 143 and 41070
+  });
+
+  test("Oregon's NDBC buoys still show, and its CDIP buoys are not shown twice", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board");
+    for (const id of ["46029", "46089", "46050", "46015"]) await expect(page.locator(`#card-NDBC-${id} .val`)).toContainText("ft");
+    for (const id of ["46243", "46248", "46229"]) await expect(page.locator(`[data-key='NDBC:${id}']`)).toHaveCount(0);
   });
 });

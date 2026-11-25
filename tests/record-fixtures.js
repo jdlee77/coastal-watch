@@ -5,6 +5,9 @@
 // To record another Area of responsibility without touching the Oregon files, set
 //   HASH="#board&area=W,S,E,N&name=..." KEEP_EXISTING=1 MOMENT=<name>
 // Its recording time is then saved in meta.json under moments.<name>, for tests to freeze the clock there.
+// waves.json is not recorded here: it is what scripts/fetch_waves.py publishes. The fixture is built by running
+// collect() on tests/fixtures/ndbc-latest_obs.txt, with Oregon's four NDBC buoys passed in as the previous
+// file so they keep the Readings recorded at Oregon's moment (see the "note" in waves.json).
 // Tide predictions are trimmed to the hours the page uses, to keep the files small.
 const fs = require("fs");
 const path = require("path");
