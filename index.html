@@ -389,11 +389,13 @@ const nwpsSearch = b => `${NWPS_GAUGE.slice(0, -1)}?bbox.xmin=${b[0]}&bbox.ymin=
 // gauges, some under HG; their names say so ("Tide Gauge…", "(in MHHW)").
 const isRiverGauge = g => /^H[GP]/.test((g.pedts && g.pedts.observed) || "") &&
   !/\btide\b|\(in (MHHW|MLLW|MSL|NAVD)/i.test(g.name || "");
-async function discoverArea(bbox, name) {
-  // Without the NWS search the tide gauges still show, with a note.
-  const [list, nwps, cdip] = await Promise.all([getJSON(COOPS_LIST), getJSON(nwpsSearch(bbox)).catch(() => null),
-    cdipBuoys().catch(() => null)]);
-  const inside = (list.stations || []).filter(st => inBox(bbox, st.lat, st.lng));
+async function discoverArea(bbox, name, wavesOk = true) {
+  // Each network's station list is read on its own: if one fails, the others still show, and
+  // the page says which network is missing (a missing network must not look like "no Stations here").
+  const [list, nwps, cdip] = await Promise.all([getJSON(COOPS_LIST).catch(() => null),
+    getJSON(nwpsSearch(bbox)).catch(() => null), cdipBuoys().catch(() => null)]);
+  const missing = [!list && "coops", !nwps && "nwps", !cdip && "cdip", !wavesOk && "ndbc"].filter(Boolean);
+  const inside = ((list && list.stations) || []).filter(st => inBox(bbox, st.lat, st.lng));
   // Tide gauges with no tidal datum are left out (ADR 0003): Great Lakes stations, and stations
   // with no MLLW. They have no tide prediction or MLLW reading, so no Surge. Counted for a note.
   const noDatum = await Promise.all(inside.map(st => st.greatlakes ? true : mllwOf(st.id).then(m => m == null, () => false)));
@@ -457,7 +459,7 @@ async function discoverArea(bbox, name) {
   const order = new Map(anchors.map((s, i) => [s.area, i + 1]));
   const stations = [...tides, ...rivers, ...buoys];
   for (const s of stations) s.area_order = order.get(s.area);
-  return { name: name || "Custom area", linkName: name || "", bbox, stations, fromLink: true, riversMissing: !nwps, buoysMissing: !cdip, leftOut,
+  return { name: name || "Custom area", linkName: name || "", bbox, stations, fromLink: true, missing, leftOut,
            // Left-out tide gauges still tell the area's time zone.
            time_zone: areaTimeZone(inside.map(st => ({ time_zone: coopsZone(st) }))) };
 }
@@ -967,16 +969,20 @@ function renderOffices(stations, readings) {
     .map(([o, c]) => `<li><b>${esc(o)}</b>: ${esc(c.first.name)}${c.last !== c.first ? " to " + esc(c.last.name) : ""}</li>`).join("");
 }
 
+// Station lists, by network, for the "could not be loaded" message
+const MISSING = { coops: "NOAA tide gauges (CO-OPS)", nwps: "NWS river gauges", cdip: "CDIP wave buoys", ndbc: "NDBC wave buoys" };
+const BIG_AREA = 150; // above this many Stations, suggest a smaller area (the page still shows them all)
 let busy = false;
 async function refresh() {
   if (busy) return; busy = true;
   document.getElementById("updated").textContent = "Refreshing…";
   try {
     // The collected wave file also lists the NDBC buoys, so it is read before an area is discovered.
-    try { wavesCache = await getJSON("data/waves.json"); } catch (e) { wavesCache = { stations: {} }; }
-    if (!def || def.riversMissing || def.buoysMissing) {
+    let wavesOk = true;
+    try { wavesCache = await getJSON("data/waves.json"); } catch (e) { wavesCache = { stations: {} }; wavesOk = false; }
+    if (!def || (def.missing && def.missing.length)) { // a missing station list is tried again at each refresh
       const h = parseHash();
-      def = h.area ? await discoverArea(h.area, h.name) : await loadAreaDefinition();
+      def = h.area ? await discoverArea(h.area, h.name, wavesOk) : await loadAreaDefinition();
       setTimeZone(def.time_zone || areaTimeZone(def.stations));
       document.getElementById("areaName").textContent = def.name;
     }
@@ -998,10 +1004,9 @@ async function refresh() {
     const n = def.leftOut || 0;
     document.getElementById("banner").innerHTML = (n
       ? `<div class="banner note" id="leftOut">${n} tide ${n === 1 ? "gauge is" : "gauges are"} left out: Great Lakes stations and stations with no tidal datum have no tide prediction or MLLW datum, so there is no Surge and no MLLW reading. River gauges and buoys there still show.</div>` : "") +
-      (def.riversMissing
-      ? `<div class="banner">The NWS river gauge list could not be read, so river gauges are missing. The page tries again at the next refresh.</div>` : "") +
-      (def.buoysMissing
-      ? `<div class="banner">The CDIP buoy list could not be read, so CDIP wave buoys are missing. The page tries again at the next refresh.</div>` : "") +
+      (def.missing || []).map(k => `<div class="banner" data-missing="${k}">${esc(MISSING[k])} could not be loaded, so they are missing from this view, not absent. The page tries again at the next refresh.</div>`).join("") +
+      (stations.length > BIG_AREA
+      ? `<div class="banner" id="bigArea">This area has ${stations.length} Stations, which is a lot to read and slow to refresh. A smaller area is easier to watch: use Choose area on the Map.</div>` : "") +
       (failed ? `<div class="banner">${failed} of ${stations.length} Stations could not be read this time. They show “no data”.</div>` : "");
     document.getElementById("updated").textContent = "Refreshed " + fmtTime.format(new Date()) + " · every 5 min";
     render();
