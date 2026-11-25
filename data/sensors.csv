@@ -1,0 +1,14 @@
+network,operator,station_id,name,hazard,verified
+CO-OPS,NOAA,9439040,Astoria Tongue Point,water_level,no
+CO-OPS,NOAA,9437540,Garibaldi,water_level,yes
+CO-OPS,NOAA,9435380,South Beach,water_level,no
+CO-OPS,NOAA,9432780,Charleston,water_level,no
+CO-OPS,NOAA,9431647,Port Orford,water_level,yes
+NDBC,NOAA,46029,Columbia River Bar,waves,yes
+NDBC,NOAA,46089,Tillamook,waves,no
+NDBC,NOAA,46050,Stonewall Bank,waves,yes
+NDBC,NOAA,46015,Port Orford,waves,yes
+CDIP,Scripps,277,PacWave South,waves,yes
+CDIP,Scripps,278,PacWave South,waves,yes
+CDIP,Scripps,280,PacWave South,waves,yes
+NWPS,NOAA NWS,14303600,Nestucca River near Beaver,river_flood,yes
