@@ -23,6 +23,11 @@ const { fixtureKey, DIR } = require("./fixtures-key");
     if (!key || !res.ok()) return;
     if (process.env.KEEP_EXISTING && fs.existsSync(path.join(DIR, key))) return;
     try {
+      if (!key.endsWith(".json")) { // CDIP text and XML, saved as served
+        fs.writeFileSync(path.join(DIR, key), await res.text());
+        saved.push(key);
+        return;
+      }
       let json = await res.json();
       if (json.predictions && key.includes("-6-")) {
         const lo = now.getTime() - 3 * 3600e3, hi = now.getTime() + 30 * 3600e3;

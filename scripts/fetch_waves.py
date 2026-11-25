@@ -1,8 +1,9 @@
-"""Collect the latest wave Reading from every wave buoy in the station list.
+"""Collect the latest wave Reading from every NDBC wave buoy in the station list.
 
 NDBC does not allow web pages to read its files directly, so GitHub
 Actions runs this script on a schedule and publishes the result as
-waves.json next to the page. See docs/adr/0002.
+waves.json next to the page. See docs/adr/0002. CDIP buoys are not
+collected: the page reads CDIP's data server itself.
 
 Usage: python3 scripts/fetch_waves.py data/sensors.csv out/waves.json
 Standard library only.
@@ -10,7 +11,6 @@ Standard library only.
 
 import csv
 import json
-import re
 import sys
 import urllib.request
 from datetime import datetime, timezone
@@ -53,39 +53,14 @@ def ndbc(station_id):
     return None
 
 
-def cdip(station_id):
-    base = f"https://thredds.cdip.ucsd.edu/thredds/dodsC/cdip/realtime/{station_id}p1_rt.nc"
-    dds = get(base + ".dds")
-    n = int(re.search(r"waveHs\[waveTime = (\d+)\]", dds).group(1))
-    lo = max(0, n - 6)
-    q = ",".join(f"{v}%5B{lo}:{n - 1}%5D" for v in ("waveTime", "waveHs", "waveTp", "waveDp"))
-    text = get(f"{base}.ascii?{q}")
-    vals = {}
-    for name in ("waveTime", "waveHs", "waveTp", "waveDp"):
-        m = re.search(name + r"\[\d+\]\s*\n([^\n]+)", text)
-        vals[name] = [float(x) for x in m.group(1).split(",")]
-    for i in range(len(vals["waveTime"]) - 1, -1, -1):
-        hs = vals["waveHs"][i]
-        if hs < 0 or hs > 50:  # fill value
-            continue
-        t = datetime.fromtimestamp(vals["waveTime"][i], tz=timezone.utc)
-        return {
-            "time": t.isoformat().replace("+00:00", "Z"),
-            "height_ft": round(hs * M_TO_FT, 1),
-            "period_s": round(vals["waveTp"][i], 1),
-            "direction_deg": round(vals["waveDp"][i]),
-        }
-    return None
-
-
 def main(sensors_csv, out_path):
     out = {"collected": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), "stations": {}}
     with open(sensors_csv, newline="") as f:
-        rows = [r for r in csv.DictReader(f) if r["kind"] == "wave_buoy"]
+        rows = [r for r in csv.DictReader(f) if r["kind"] == "wave_buoy" and r["network"] == "NDBC"]
     for r in rows:
         key = f'{r["network"]}:{r["station_id"]}'
         try:
-            reading = ndbc(r["station_id"]) if r["network"] == "NDBC" else cdip(r["station_id"])
+            reading = ndbc(r["station_id"])
             out["stations"][key] = {"reading": reading}
         except Exception as e:  # one bad buoy must not stop the rest
             out["stations"][key] = {"reading": None, "error": f"{type(e).__name__}: {e}"}

@@ -1,0 +1,631 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog xmlns="http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.2">
+  <service name="all" serviceType="compound" base="">
+    <service name="odap" serviceType="OpenDAP" base="/thredds/dodsC/" />
+    <service name="dap4" serviceType="DAP4" base="/thredds/dap4/" />
+    <service name="http" serviceType="HTTPServer" base="/thredds/fileServer/" />
+    <service name="wcs" serviceType="WCS" base="/thredds/wcs/" />
+    <service name="wms" serviceType="WMS" base="/thredds/wms/" />
+    <service name="ncssGrid" serviceType="NetcdfSubset" base="/thredds/ncss/grid/" />
+    <service name="ncssPoint" serviceType="NetcdfSubset" base="/thredds/ncss/point/" />
+    <service name="cdmremote" serviceType="CdmRemote" base="/thredds/cdmremote/" />
+    <service name="iso" serviceType="ISO" base="/thredds/iso/" />
+    <service name="ncml" serviceType="NCML" base="/thredds/ncml/" />
+    <service name="uddc" serviceType="UDDC" base="/thredds/uddc/" />
+  </service>
+  <service name="cdip1" serviceType="compound" base="">
+    <service name="odap" serviceType="OpenDAP" base="/thredds/dodsC/" />
+    <service name="http" serviceType="HTTPServer" base="/thredds/fileServer/" />
+    <service name="ncssPoint" serviceType="NetcdfSubset" base="/thredds/ncss/point/" />
+    <service name="iso" serviceType="ISO" base="/thredds/iso/" />
+    <service name="ncml" serviceType="NCML" base="/thredds/ncml/" />
+    <service name="uddc" serviceType="UDDC" base="/thredds/uddc/" />
+  </service>
+  <dataset name="CDIP Realtime">
+    <property name="DatasetScan" value="true" />
+    <metadata inherited="true">
+      <serviceName>cdip1</serviceName>
+      <dataType>Station</dataType>
+      <documentation xlink:href="https://docs.google.com/document/d/1Uz_xIAVD2M6WeqQQ_x7ycoM3iKENO38S4Bmn6SasHtY/edit?usp=sharing" xlink:title="CDIP THREDDS Data Access Instructions" />
+      <documentation type="rights">These data may be redistributed and used without restriction.</documentation>
+      <documentation type="summary">Directional wave and sea surface temperature measurements collected in situ by Datawell buoys. Only the 'historic' ARCHIVE datasets exclude bad data. The REALTIME datasets and all the single-deployment ARCHIVE datasets include bad data, with the qc 'Flag' variables appropriately set; it is up to users to mask off bad values as needed.</documentation>
+      <documentation type="processing_level" xlink:href="http://cdip.ucsd.edu/documentation" xlink:title="QA/QC information available" />
+      <contributor role="data management">CDIP</contributor>
+      <contributor role="sponsor">Various buoys are sponsored by: Pacific Islands Ocean Observing System (PacIOOS), National Oceanic and Atmospheric Administration (NOAA), U.S. Geological Survey (USGS), National Weather Service (NWS), Coastal Observing Research and Development Center (CORDC), Central and Northern California Ocean Observing System (CENCOOS), Applied Physics Laboratory of the University of Washington (UW-APL), US Army Corps of Engineers(USACE)</contributor>
+      <keyword>EARTH SCIENCE</keyword>
+      <keyword>OCEANS</keyword>
+      <keyword>OCEAN WAVES</keyword>
+      <keyword>GRAVITY WAVES</keyword>
+      <keyword>WIND WAVES</keyword>
+      <keyword>SIGNIFICANT WAVE HEIGHT</keyword>
+      <keyword>WAVE FREQUENCY</keyword>
+      <keyword>WAVE PERIOD</keyword>
+      <keyword>WAVE SPECTRA</keyword>
+      <keyword>OCEAN TEMPERATURE</keyword>
+      <keyword>SEA SURFACE TEMPERATURE</keyword>
+      <keyword>WATER TEMPERATURE</keyword>
+      <keyword>OCEAN</keyword>
+      <property name="viewer2" value="http://cdip.ucsd.edu/offline/wavecdf/wnc_browse.php?REALTIME+{url},CDIP Realtime Viewer (browser-based)" />
+    </metadata>
+    <dataset name="028p1_rt.nc" ID="CDIP_Realtime/028p1_rt.nc" urlPath="cdip/realtime/028p1_rt.nc">
+      <dataSize units="Mbytes">24.77</dataSize>
+      <date type="modified">2026-11-25T21:30:15.672Z</date>
+    </dataset>
+    <dataset name="028p1_xy.nc" ID="CDIP_Realtime/028p1_xy.nc" urlPath="cdip/realtime/028p1_xy.nc">
+      <dataSize units="Mbytes">504.7</dataSize>
+      <date type="modified">2026-11-25T21:31:10.232Z</date>
+    </dataset>
+    <dataset name="029p1_rt.nc" ID="CDIP_Realtime/029p1_rt.nc" urlPath="cdip/realtime/029p1_rt.nc">
+      <dataSize units="Mbytes">39.69</dataSize>
+      <date type="modified">2026-11-25T21:30:17.368Z</date>
+    </dataset>
+    <dataset name="029p1_xy.nc" ID="CDIP_Realtime/029p1_xy.nc" urlPath="cdip/realtime/029p1_xy.nc">
+      <dataSize units="Mbytes">807.2</dataSize>
+      <date type="modified">2026-11-25T21:31:13.130Z</date>
+    </dataset>
+    <dataset name="036p1_rt.nc" ID="CDIP_Realtime/036p1_rt.nc" urlPath="cdip/realtime/036p1_rt.nc">
+      <dataSize units="Mbytes">45.46</dataSize>
+      <date type="modified">2026-11-25T21:44:21.384Z</date>
+    </dataset>
+    <dataset name="036p1_xy.nc" ID="CDIP_Realtime/036p1_xy.nc" urlPath="cdip/realtime/036p1_xy.nc">
+      <dataSize units="Mbytes">924.3</dataSize>
+      <date type="modified">2026-11-25T21:45:31.161Z</date>
+    </dataset>
+    <dataset name="045p1_rt.nc" ID="CDIP_Realtime/045p1_rt.nc" urlPath="cdip/realtime/045p1_rt.nc">
+      <dataSize units="Mbytes">23.72</dataSize>
+      <date type="modified">2026-11-25T21:29:52.277Z</date>
+    </dataset>
+    <dataset name="045p1_xy.nc" ID="CDIP_Realtime/045p1_xy.nc" urlPath="cdip/realtime/045p1_xy.nc">
+      <dataSize units="Mbytes">483.5</dataSize>
+      <date type="modified">2026-11-25T21:31:11.332Z</date>
+    </dataset>
+    <dataset name="067p1_rt.nc" ID="CDIP_Realtime/067p1_rt.nc" urlPath="cdip/realtime/067p1_rt.nc">
+      <dataSize units="Mbytes">14.11</dataSize>
+      <date type="modified">2026-11-25T21:30:10.848Z</date>
+    </dataset>
+    <dataset name="067p1_xy.nc" ID="CDIP_Realtime/067p1_xy.nc" urlPath="cdip/realtime/067p1_xy.nc">
+      <dataSize units="Mbytes">284.5</dataSize>
+      <date type="modified">2026-11-25T21:31:22.828Z</date>
+    </dataset>
+    <dataset name="071p1_rt.nc" ID="CDIP_Realtime/071p1_rt.nc" urlPath="cdip/realtime/071p1_rt.nc">
+      <dataSize units="Mbytes">30.45</dataSize>
+      <date type="modified">2026-11-25T21:30:20.717Z</date>
+    </dataset>
+    <dataset name="071p1_xy.nc" ID="CDIP_Realtime/071p1_xy.nc" urlPath="cdip/realtime/071p1_xy.nc">
+      <dataSize units="Mbytes">611.1</dataSize>
+      <date type="modified">2026-11-25T21:31:25.747Z</date>
+    </dataset>
+    <dataset name="076p1_rt.nc" ID="CDIP_Realtime/076p1_rt.nc" urlPath="cdip/realtime/076p1_rt.nc">
+      <dataSize units="Mbytes">41.01</dataSize>
+      <date type="modified">2026-11-25T21:30:12.596Z</date>
+    </dataset>
+    <dataset name="076p1_xy.nc" ID="CDIP_Realtime/076p1_xy.nc" urlPath="cdip/realtime/076p1_xy.nc">
+      <dataSize units="Mbytes">834.0</dataSize>
+      <date type="modified">2026-11-25T21:31:29.099Z</date>
+    </dataset>
+    <dataset name="092p1_rt.nc" ID="CDIP_Realtime/092p1_rt.nc" urlPath="cdip/realtime/092p1_rt.nc">
+      <dataSize units="Mbytes">37.48</dataSize>
+      <date type="modified">2026-11-25T21:30:24.225Z</date>
+    </dataset>
+    <dataset name="092p1_xy.nc" ID="CDIP_Realtime/092p1_xy.nc" urlPath="cdip/realtime/092p1_xy.nc">
+      <dataSize units="Mbytes">762.5</dataSize>
+      <date type="modified">2026-11-25T21:31:21.853Z</date>
+    </dataset>
+    <dataset name="098p1_rt.nc" ID="CDIP_Realtime/098p1_rt.nc" urlPath="cdip/realtime/098p1_rt.nc">
+      <dataSize units="Mbytes">45.70</dataSize>
+      <date type="modified">2026-11-25T21:31:49.048Z</date>
+    </dataset>
+    <dataset name="098p1_xy.nc" ID="CDIP_Realtime/098p1_xy.nc" urlPath="cdip/realtime/098p1_xy.nc">
+      <dataSize units="Mbytes">931.7</dataSize>
+      <date type="modified">2026-11-25T21:32:57.427Z</date>
+    </dataset>
+    <dataset name="100p1_rt.nc" ID="CDIP_Realtime/100p1_rt.nc" urlPath="cdip/realtime/100p1_rt.nc">
+      <dataSize units="Mbytes">28.18</dataSize>
+      <date type="modified">2026-11-25T21:30:22.357Z</date>
+    </dataset>
+    <dataset name="100p1_xy.nc" ID="CDIP_Realtime/100p1_xy.nc" urlPath="cdip/realtime/100p1_xy.nc">
+      <dataSize units="Mbytes">565.8</dataSize>
+      <date type="modified">2026-11-25T21:31:24.801Z</date>
+    </dataset>
+    <dataset name="103p1_rt.nc" ID="CDIP_Realtime/103p1_rt.nc" urlPath="cdip/realtime/103p1_rt.nc">
+      <dataSize units="Mbytes">282.2</dataSize>
+      <date type="modified">2026-11-25T20:18:52.051Z</date>
+    </dataset>
+    <dataset name="103p1_xy.nc" ID="CDIP_Realtime/103p1_xy.nc" urlPath="cdip/realtime/103p1_xy.nc">
+      <dataSize units="Gbytes">3.955</dataSize>
+      <date type="modified">2026-02-18T14:19:52.402Z</date>
+    </dataset>
+    <dataset name="106p1_rt.nc" ID="CDIP_Realtime/106p1_rt.nc" urlPath="cdip/realtime/106p1_rt.nc">
+      <dataSize units="Mbytes">24.47</dataSize>
+      <date type="modified">2026-11-25T21:30:13.980Z</date>
+    </dataset>
+    <dataset name="106p1_xy.nc" ID="CDIP_Realtime/106p1_xy.nc" urlPath="cdip/realtime/106p1_xy.nc">
+      <dataSize units="Mbytes">499.3</dataSize>
+      <date type="modified">2026-11-25T21:31:12.318Z</date>
+    </dataset>
+    <dataset name="121p1_rt.nc" ID="CDIP_Realtime/121p1_rt.nc" urlPath="cdip/realtime/121p1_rt.nc">
+      <dataSize units="Mbytes">80.14</dataSize>
+      <date type="modified">2026-06-28T22:31:56.599Z</date>
+    </dataset>
+    <dataset name="121p1_xy.nc" ID="CDIP_Realtime/121p1_xy.nc" urlPath="cdip/realtime/121p1_xy.nc">
+      <dataSize units="Gbytes">1.583</dataSize>
+      <date type="modified">2026-06-10T22:03:24.809Z</date>
+    </dataset>
+    <dataset name="132p1_rt.nc" ID="CDIP_Realtime/132p1_rt.nc" urlPath="cdip/realtime/132p1_rt.nc">
+      <dataSize units="Mbytes">42.06</dataSize>
+      <date type="modified">2026-11-25T21:30:36.532Z</date>
+    </dataset>
+    <dataset name="132p1_xy.nc" ID="CDIP_Realtime/132p1_xy.nc" urlPath="cdip/realtime/132p1_xy.nc">
+      <dataSize units="Mbytes">855.4</dataSize>
+      <date type="modified">2026-11-25T21:31:50.819Z</date>
+    </dataset>
+    <dataset name="134p1_rt.nc" ID="CDIP_Realtime/134p1_rt.nc" urlPath="cdip/realtime/134p1_rt.nc">
+      <dataSize units="Mbytes">8.565</dataSize>
+      <date type="modified">2026-11-25T21:30:41.933Z</date>
+    </dataset>
+    <dataset name="134p1_xy.nc" ID="CDIP_Realtime/134p1_xy.nc" urlPath="cdip/realtime/134p1_xy.nc">
+      <dataSize units="Mbytes">176.0</dataSize>
+      <date type="modified">2026-11-25T21:31:53.277Z</date>
+    </dataset>
+    <dataset name="139p1_rt.nc" ID="CDIP_Realtime/139p1_rt.nc" urlPath="cdip/realtime/139p1_rt.nc">
+      <dataSize units="Mbytes">12.72</dataSize>
+      <date type="modified">2026-11-25T21:02:23.743Z</date>
+    </dataset>
+    <dataset name="139p1_xy.nc" ID="CDIP_Realtime/139p1_xy.nc" urlPath="cdip/realtime/139p1_xy.nc">
+      <dataSize units="Mbytes">260.6</dataSize>
+      <date type="modified">2026-11-25T21:03:13.486Z</date>
+    </dataset>
+    <dataset name="142p1_rt.nc" ID="CDIP_Realtime/142p1_rt.nc" urlPath="cdip/realtime/142p1_rt.nc">
+      <dataSize units="Mbytes">13.21</dataSize>
+      <date type="modified">2026-11-25T21:36:13.810Z</date>
+    </dataset>
+    <dataset name="142p1_xy.nc" ID="CDIP_Realtime/142p1_xy.nc" urlPath="cdip/realtime/142p1_xy.nc">
+      <dataSize units="Mbytes">14.60</dataSize>
+      <date type="modified">2026-10-12T12:39:46.862Z</date>
+    </dataset>
+    <dataset name="143p1_rt.nc" ID="CDIP_Realtime/143p1_rt.nc" urlPath="cdip/realtime/143p1_rt.nc">
+      <dataSize units="Mbytes">2.658</dataSize>
+      <date type="modified">2026-11-25T21:30:19.205Z</date>
+    </dataset>
+    <dataset name="143p1_xy.nc" ID="CDIP_Realtime/143p1_xy.nc" urlPath="cdip/realtime/143p1_xy.nc">
+      <dataSize units="Mbytes">56.32</dataSize>
+      <date type="modified">2026-11-25T21:31:33.863Z</date>
+    </dataset>
+    <dataset name="144p1_rt.nc" ID="CDIP_Realtime/144p1_rt.nc" urlPath="cdip/realtime/144p1_rt.nc">
+      <dataSize units="Mbytes">37.34</dataSize>
+      <date type="modified">2026-11-25T21:31:45.318Z</date>
+    </dataset>
+    <dataset name="144p1_xy.nc" ID="CDIP_Realtime/144p1_xy.nc" urlPath="cdip/realtime/144p1_xy.nc">
+      <dataSize units="Mbytes">759.7</dataSize>
+      <date type="modified">2026-11-25T21:32:48.345Z</date>
+    </dataset>
+    <dataset name="147p1_rt.nc" ID="CDIP_Realtime/147p1_rt.nc" urlPath="cdip/realtime/147p1_rt.nc">
+      <dataSize units="Mbytes">63.41</dataSize>
+      <date type="modified">2026-11-25T21:31:32.920Z</date>
+    </dataset>
+    <dataset name="147p1_xy.nc" ID="CDIP_Realtime/147p1_xy.nc" urlPath="cdip/realtime/147p1_xy.nc">
+      <dataSize units="Gbytes">1.288</dataSize>
+      <date type="modified">2026-11-25T21:32:46.335Z</date>
+    </dataset>
+    <dataset name="150p1_rt.nc" ID="CDIP_Realtime/150p1_rt.nc" urlPath="cdip/realtime/150p1_rt.nc">
+      <dataSize units="Mbytes">58.76</dataSize>
+      <date type="modified">2026-11-25T21:36:34.802Z</date>
+    </dataset>
+    <dataset name="150p1_xy.nc" ID="CDIP_Realtime/150p1_xy.nc" urlPath="cdip/realtime/150p1_xy.nc">
+      <dataSize units="Gbytes">1.032</dataSize>
+      <date type="modified">2026-10-19T03:09:57.079Z</date>
+    </dataset>
+    <dataset name="153p1_rt.nc" ID="CDIP_Realtime/153p1_rt.nc" urlPath="cdip/realtime/153p1_rt.nc">
+      <dataSize units="Mbytes">61.48</dataSize>
+      <date type="modified">2026-11-25T21:31:42.586Z</date>
+    </dataset>
+    <dataset name="153p1_xy.nc" ID="CDIP_Realtime/153p1_xy.nc" urlPath="cdip/realtime/153p1_xy.nc">
+      <dataSize units="Gbytes">1.250</dataSize>
+      <date type="modified">2026-11-25T21:32:38.246Z</date>
+    </dataset>
+    <dataset name="154p1_rt.nc" ID="CDIP_Realtime/154p1_rt.nc" urlPath="cdip/realtime/154p1_rt.nc">
+      <dataSize units="Mbytes">20.82</dataSize>
+      <date type="modified">2026-11-25T21:36:12.970Z</date>
+    </dataset>
+    <dataset name="154p1_xy.nc" ID="CDIP_Realtime/154p1_xy.nc" urlPath="cdip/realtime/154p1_xy.nc">
+      <dataSize units="Mbytes">223.9</dataSize>
+      <date type="modified">2026-10-21T20:09:48.178Z</date>
+    </dataset>
+    <dataset name="156p1_rt.nc" ID="CDIP_Realtime/156p1_rt.nc" urlPath="cdip/realtime/156p1_rt.nc">
+      <dataSize units="Mbytes">27.19</dataSize>
+      <date type="modified">2026-11-25T21:36:43.042Z</date>
+    </dataset>
+    <dataset name="156p1_xy.nc" ID="CDIP_Realtime/156p1_xy.nc" urlPath="cdip/realtime/156p1_xy.nc">
+      <dataSize units="Mbytes">140.2</dataSize>
+      <date type="modified">2026-10-19T04:09:04.625Z</date>
+    </dataset>
+    <dataset name="160p1_rt.nc" ID="CDIP_Realtime/160p1_rt.nc" urlPath="cdip/realtime/160p1_rt.nc">
+      <dataSize units="Mbytes">113.0</dataSize>
+      <date type="modified">2026-11-25T21:36:19.330Z</date>
+    </dataset>
+    <dataset name="160p1_xy.nc" ID="CDIP_Realtime/160p1_xy.nc" urlPath="cdip/realtime/160p1_xy.nc">
+      <dataSize units="Gbytes">2.045</dataSize>
+      <date type="modified">2026-10-21T19:39:09.474Z</date>
+    </dataset>
+    <dataset name="162p1_rt.nc" ID="CDIP_Realtime/162p1_rt.nc" urlPath="cdip/realtime/162p1_rt.nc">
+      <dataSize units="Mbytes">10.56</dataSize>
+      <date type="modified">2026-11-25T21:36:45.762Z</date>
+    </dataset>
+    <dataset name="162p1_xy.nc" ID="CDIP_Realtime/162p1_xy.nc" urlPath="cdip/realtime/162p1_xy.nc">
+      <dataSize units="Mbytes">45.38</dataSize>
+      <date type="modified">2026-10-21T19:42:00.459Z</date>
+    </dataset>
+    <dataset name="163p1_rt.nc" ID="CDIP_Realtime/163p1_rt.nc" urlPath="cdip/realtime/163p1_rt.nc">
+      <dataSize units="Mbytes">4.649</dataSize>
+      <date type="modified">2026-11-25T21:46:14.072Z</date>
+    </dataset>
+    <dataset name="166p1_rt.nc" ID="CDIP_Realtime/166p1_rt.nc" urlPath="cdip/realtime/166p1_rt.nc">
+      <dataSize units="Mbytes">71.81</dataSize>
+      <date type="modified">2026-11-25T21:01:49.548Z</date>
+    </dataset>
+    <dataset name="166p1_xy.nc" ID="CDIP_Realtime/166p1_xy.nc" urlPath="cdip/realtime/166p1_xy.nc">
+      <dataSize units="Mbytes">5.111</dataSize>
+      <date type="modified">2025-05-23T23:10:08.323Z</date>
+    </dataset>
+    <dataset name="168p1_rt.nc" ID="CDIP_Realtime/168p1_rt.nc" urlPath="cdip/realtime/168p1_rt.nc">
+      <dataSize units="Mbytes">6.449</dataSize>
+      <date type="modified">2026-11-25T21:31:43.578Z</date>
+    </dataset>
+    <dataset name="168p1_xy.nc" ID="CDIP_Realtime/168p1_xy.nc" urlPath="cdip/realtime/168p1_xy.nc">
+      <dataSize units="Mbytes">133.1</dataSize>
+      <date type="modified">2026-11-25T21:32:37.425Z</date>
+    </dataset>
+    <dataset name="171p1_rt.nc" ID="CDIP_Realtime/171p1_rt.nc" urlPath="cdip/realtime/171p1_rt.nc">
+      <dataSize units="Mbytes">218.8</dataSize>
+      <date type="modified">2026-11-25T21:46:11.911Z</date>
+    </dataset>
+    <dataset name="171p1_xy.nc" ID="CDIP_Realtime/171p1_xy.nc" urlPath="cdip/realtime/171p1_xy.nc">
+      <dataSize units="Gbytes">4.512</dataSize>
+      <date type="modified">2026-10-21T19:49:58.880Z</date>
+    </dataset>
+    <dataset name="178p1_rt.nc" ID="CDIP_Realtime/178p1_rt.nc" urlPath="cdip/realtime/178p1_rt.nc">
+      <dataSize units="Mbytes">21.97</dataSize>
+      <date type="modified">2026-11-25T21:46:16.520Z</date>
+    </dataset>
+    <dataset name="178p1_xy.nc" ID="CDIP_Realtime/178p1_xy.nc" urlPath="cdip/realtime/178p1_xy.nc">
+      <dataSize units="Mbytes">252.6</dataSize>
+      <date type="modified">2026-10-17T08:19:37.298Z</date>
+    </dataset>
+    <dataset name="179p1_rt.nc" ID="CDIP_Realtime/179p1_rt.nc" urlPath="cdip/realtime/179p1_rt.nc">
+      <dataSize units="Mbytes">89.71</dataSize>
+      <date type="modified">2026-11-25T21:30:40.821Z</date>
+    </dataset>
+    <dataset name="179p1_xy.nc" ID="CDIP_Realtime/179p1_xy.nc" urlPath="cdip/realtime/179p1_xy.nc">
+      <dataSize units="Gbytes">1.821</dataSize>
+      <date type="modified">2026-11-25T21:32:51.835Z</date>
+    </dataset>
+    <dataset name="181p1_rt.nc" ID="CDIP_Realtime/181p1_rt.nc" urlPath="cdip/realtime/181p1_rt.nc">
+      <dataSize units="Mbytes">5.672</dataSize>
+      <date type="modified">2026-11-25T21:31:39.770Z</date>
+    </dataset>
+    <dataset name="181p1_xy.nc" ID="CDIP_Realtime/181p1_xy.nc" urlPath="cdip/realtime/181p1_xy.nc">
+      <dataSize units="Mbytes">117.6</dataSize>
+      <date type="modified">2026-11-25T21:32:52.693Z</date>
+    </dataset>
+    <dataset name="187p1_rt.nc" ID="CDIP_Realtime/187p1_rt.nc" urlPath="cdip/realtime/187p1_rt.nc">
+      <dataSize units="Mbytes">54.19</dataSize>
+      <date type="modified">2026-10-13T18:59:55.609Z</date>
+    </dataset>
+    <dataset name="187p1_xy.nc" ID="CDIP_Realtime/187p1_xy.nc" urlPath="cdip/realtime/187p1_xy.nc">
+      <dataSize units="Gbytes">1.101</dataSize>
+      <date type="modified">2026-10-13T19:00:59.891Z</date>
+    </dataset>
+    <dataset name="188p1_rt.nc" ID="CDIP_Realtime/188p1_rt.nc" urlPath="cdip/realtime/188p1_rt.nc">
+      <dataSize units="Mbytes">71.36</dataSize>
+      <date type="modified">2026-11-25T21:30:30.949Z</date>
+    </dataset>
+    <dataset name="188p1_xy.nc" ID="CDIP_Realtime/188p1_xy.nc" urlPath="cdip/realtime/188p1_xy.nc">
+      <dataSize units="Gbytes">1.449</dataSize>
+      <date type="modified">2026-11-25T21:31:28.092Z</date>
+    </dataset>
+    <dataset name="189p1_rt.nc" ID="CDIP_Realtime/189p1_rt.nc" urlPath="cdip/realtime/189p1_rt.nc">
+      <dataSize units="Mbytes">71.43</dataSize>
+      <date type="modified">2026-11-25T21:30:27.497Z</date>
+    </dataset>
+    <dataset name="189p1_xy.nc" ID="CDIP_Realtime/189p1_xy.nc" urlPath="cdip/realtime/189p1_xy.nc">
+      <dataSize units="Gbytes">1.430</dataSize>
+      <date type="modified">2026-11-25T21:31:49.874Z</date>
+    </dataset>
+    <dataset name="191p1_rt.nc" ID="CDIP_Realtime/191p1_rt.nc" urlPath="cdip/realtime/191p1_rt.nc">
+      <dataSize units="Mbytes">9.064</dataSize>
+      <date type="modified">2026-11-25T21:29:53.796Z</date>
+    </dataset>
+    <dataset name="191p1_xy.nc" ID="CDIP_Realtime/191p1_xy.nc" urlPath="cdip/realtime/191p1_xy.nc">
+      <dataSize units="Mbytes">186.5</dataSize>
+      <date type="modified">2026-11-25T21:30:57.891Z</date>
+    </dataset>
+    <dataset name="192p1_rt.nc" ID="CDIP_Realtime/192p1_rt.nc" urlPath="cdip/realtime/192p1_rt.nc">
+      <dataSize units="Mbytes">25.02</dataSize>
+      <date type="modified">2026-11-25T21:01:23.420Z</date>
+    </dataset>
+    <dataset name="192p1_xy.nc" ID="CDIP_Realtime/192p1_xy.nc" urlPath="cdip/realtime/192p1_xy.nc">
+      <dataSize units="Mbytes">410.9</dataSize>
+      <date type="modified">2026-10-19T14:45:25.710Z</date>
+    </dataset>
+    <dataset name="194p1_rt.nc" ID="CDIP_Realtime/194p1_rt.nc" urlPath="cdip/realtime/194p1_rt.nc">
+      <dataSize units="Mbytes">45.59</dataSize>
+      <date type="modified">2026-11-25T21:30:34.644Z</date>
+    </dataset>
+    <dataset name="194p1_xy.nc" ID="CDIP_Realtime/194p1_xy.nc" urlPath="cdip/realtime/194p1_xy.nc">
+      <dataSize units="Mbytes">927.0</dataSize>
+      <date type="modified">2026-11-25T21:31:46.903Z</date>
+    </dataset>
+    <dataset name="200p1_rt.nc" ID="CDIP_Realtime/200p1_rt.nc" urlPath="cdip/realtime/200p1_rt.nc">
+      <dataSize units="Mbytes">2.669</dataSize>
+      <date type="modified">2026-11-25T21:42:16.807Z</date>
+    </dataset>
+    <dataset name="200p1_xy.nc" ID="CDIP_Realtime/200p1_xy.nc" urlPath="cdip/realtime/200p1_xy.nc">
+      <dataSize units="Mbytes">56.54</dataSize>
+      <date type="modified">2026-11-25T21:44:08.954Z</date>
+    </dataset>
+    <dataset name="201p1_rt.nc" ID="CDIP_Realtime/201p1_rt.nc" urlPath="cdip/realtime/201p1_rt.nc">
+      <dataSize units="Mbytes">4.622</dataSize>
+      <date type="modified">2026-11-25T21:31:36.290Z</date>
+    </dataset>
+    <dataset name="201p1_xy.nc" ID="CDIP_Realtime/201p1_xy.nc" urlPath="cdip/realtime/201p1_xy.nc">
+      <dataSize units="Mbytes">96.13</dataSize>
+      <date type="modified">2026-11-25T21:32:53.647Z</date>
+    </dataset>
+    <dataset name="203p1_rt.nc" ID="CDIP_Realtime/203p1_rt.nc" urlPath="cdip/realtime/203p1_rt.nc">
+      <dataSize units="Mbytes">64.28</dataSize>
+      <date type="modified">2026-11-25T21:30:09.645Z</date>
+    </dataset>
+    <dataset name="203p1_xy.nc" ID="CDIP_Realtime/203p1_xy.nc" urlPath="cdip/realtime/203p1_xy.nc">
+      <dataSize units="Gbytes">1.287</dataSize>
+      <date type="modified">2026-11-25T21:31:20.833Z</date>
+    </dataset>
+    <dataset name="204p1_rt.nc" ID="CDIP_Realtime/204p1_rt.nc" urlPath="cdip/realtime/204p1_rt.nc">
+      <dataSize units="Mbytes">87.45</dataSize>
+      <date type="modified">2026-11-25T21:36:26.774Z</date>
+    </dataset>
+    <dataset name="204p1_xy.nc" ID="CDIP_Realtime/204p1_xy.nc" urlPath="cdip/realtime/204p1_xy.nc">
+      <dataSize units="Gbytes">2.021</dataSize>
+      <date type="modified">2026-10-21T07:37:05.870Z</date>
+    </dataset>
+    <dataset name="209p1_rt.nc" ID="CDIP_Realtime/209p1_rt.nc" urlPath="cdip/realtime/209p1_rt.nc">
+      <dataSize units="Mbytes">126.1</dataSize>
+      <date type="modified">2026-11-25T21:36:41.038Z</date>
+    </dataset>
+    <dataset name="209p1_xy.nc" ID="CDIP_Realtime/209p1_xy.nc" urlPath="cdip/realtime/209p1_xy.nc">
+      <dataSize units="Gbytes">2.125</dataSize>
+      <date type="modified">2026-10-21T18:10:00.379Z</date>
+    </dataset>
+    <dataset name="213p1_rt.nc" ID="CDIP_Realtime/213p1_rt.nc" urlPath="cdip/realtime/213p1_rt.nc">
+      <dataSize units="Mbytes">28.72</dataSize>
+      <date type="modified">2026-11-25T21:30:32.681Z</date>
+    </dataset>
+    <dataset name="213p1_xy.nc" ID="CDIP_Realtime/213p1_xy.nc" urlPath="cdip/realtime/213p1_xy.nc">
+      <dataSize units="Mbytes">584.8</dataSize>
+      <date type="modified">2026-11-25T21:31:23.773Z</date>
+    </dataset>
+    <dataset name="214p1_rt.nc" ID="CDIP_Realtime/214p1_rt.nc" urlPath="cdip/realtime/214p1_rt.nc">
+      <dataSize units="Mbytes">95.92</dataSize>
+      <date type="modified">2026-11-25T21:36:32.554Z</date>
+    </dataset>
+    <dataset name="214p1_xy.nc" ID="CDIP_Realtime/214p1_xy.nc" urlPath="cdip/realtime/214p1_xy.nc">
+      <dataSize units="Gbytes">1.833</dataSize>
+      <date type="modified">2026-10-10T09:40:16.516Z</date>
+    </dataset>
+    <dataset name="215p1_rt.nc" ID="CDIP_Realtime/215p1_rt.nc" urlPath="cdip/realtime/215p1_rt.nc">
+      <dataSize units="Mbytes">19.42</dataSize>
+      <date type="modified">2026-11-25T21:32:25.678Z</date>
+    </dataset>
+    <dataset name="215p1_xy.nc" ID="CDIP_Realtime/215p1_xy.nc" urlPath="cdip/realtime/215p1_xy.nc">
+      <dataSize units="Mbytes">396.2</dataSize>
+      <date type="modified">2026-11-25T21:33:39.398Z</date>
+    </dataset>
+    <dataset name="217p1_rt.nc" ID="CDIP_Realtime/217p1_rt.nc" urlPath="cdip/realtime/217p1_rt.nc">
+      <dataSize units="Mbytes">80.60</dataSize>
+      <date type="modified">2026-11-25T21:02:14.423Z</date>
+    </dataset>
+    <dataset name="217p1_xy.nc" ID="CDIP_Realtime/217p1_xy.nc" urlPath="cdip/realtime/217p1_xy.nc">
+      <dataSize units="Gbytes">1.526</dataSize>
+      <date type="modified">2026-10-14T14:45:05.224Z</date>
+    </dataset>
+    <dataset name="219p1_rt.nc" ID="CDIP_Realtime/219p1_rt.nc" urlPath="cdip/realtime/219p1_rt.nc">
+      <dataSize units="Mbytes">25.83</dataSize>
+      <date type="modified">2026-11-25T21:46:26.363Z</date>
+    </dataset>
+    <dataset name="220p1_rt.nc" ID="CDIP_Realtime/220p1_rt.nc" urlPath="cdip/realtime/220p1_rt.nc">
+      <dataSize units="Mbytes">59.83</dataSize>
+      <date type="modified">2026-11-25T21:31:38.842Z</date>
+    </dataset>
+    <dataset name="220p1_xy.nc" ID="CDIP_Realtime/220p1_xy.nc" urlPath="cdip/realtime/220p1_xy.nc">
+      <dataSize units="Gbytes">1.216</dataSize>
+      <date type="modified">2026-11-25T21:32:36.534Z</date>
+    </dataset>
+    <dataset name="221p1_rt.nc" ID="CDIP_Realtime/221p1_rt.nc" urlPath="cdip/realtime/221p1_rt.nc">
+      <dataSize units="Mbytes">46.24</dataSize>
+      <date type="modified">2026-11-25T21:46:18.140Z</date>
+    </dataset>
+    <dataset name="221p1_xy.nc" ID="CDIP_Realtime/221p1_xy.nc" urlPath="cdip/realtime/221p1_xy.nc">
+      <dataSize units="Mbytes">797.4</dataSize>
+      <date type="modified">2026-10-17T11:49:48.948Z</date>
+    </dataset>
+    <dataset name="225p1_rt.nc" ID="CDIP_Realtime/225p1_rt.nc" urlPath="cdip/realtime/225p1_rt.nc">
+      <dataSize units="Mbytes">76.53</dataSize>
+      <date type="modified">2026-07-14T06:31:37.520Z</date>
+    </dataset>
+    <dataset name="225p1_xy.nc" ID="CDIP_Realtime/225p1_xy.nc" urlPath="cdip/realtime/225p1_xy.nc">
+      <dataSize units="Gbytes">1.556</dataSize>
+      <date type="modified">2026-07-14T06:01:10.146Z</date>
+    </dataset>
+    <dataset name="233p1_rt.nc" ID="CDIP_Realtime/233p1_rt.nc" urlPath="cdip/realtime/233p1_rt.nc">
+      <dataSize units="Mbytes">49.14</dataSize>
+      <date type="modified">2026-11-25T21:36:21.370Z</date>
+    </dataset>
+    <dataset name="233p1_xy.nc" ID="CDIP_Realtime/233p1_xy.nc" urlPath="cdip/realtime/233p1_xy.nc">
+      <dataSize units="Mbytes">288.6</dataSize>
+      <date type="modified">2026-10-09T08:39:52.569Z</date>
+    </dataset>
+    <dataset name="240p1_rt.nc" ID="CDIP_Realtime/240p1_rt.nc" urlPath="cdip/realtime/240p1_rt.nc">
+      <dataSize units="Mbytes">12.75</dataSize>
+      <date type="modified">2026-11-25T21:31:20.060Z</date>
+    </dataset>
+    <dataset name="240p1_xy.nc" ID="CDIP_Realtime/240p1_xy.nc" urlPath="cdip/realtime/240p1_xy.nc">
+      <dataSize units="Mbytes">261.1</dataSize>
+      <date type="modified">2026-11-25T21:32:35.261Z</date>
+    </dataset>
+    <dataset name="243p1_rt.nc" ID="CDIP_Realtime/243p1_rt.nc" urlPath="cdip/realtime/243p1_rt.nc">
+      <dataSize units="Mbytes">46.36</dataSize>
+      <date type="modified">2026-11-25T21:36:23.166Z</date>
+    </dataset>
+    <dataset name="243p1_xy.nc" ID="CDIP_Realtime/243p1_xy.nc" urlPath="cdip/realtime/243p1_xy.nc">
+      <dataSize units="Mbytes">766.5</dataSize>
+      <date type="modified">2026-10-21T20:09:50.467Z</date>
+    </dataset>
+    <dataset name="244p1_rt.nc" ID="CDIP_Realtime/244p1_rt.nc" urlPath="cdip/realtime/244p1_rt.nc">
+      <dataSize units="Mbytes">115.7</dataSize>
+      <date type="modified">2026-11-25T21:45:55.275Z</date>
+    </dataset>
+    <dataset name="244p1_xy.nc" ID="CDIP_Realtime/244p1_xy.nc" urlPath="cdip/realtime/244p1_xy.nc">
+      <dataSize units="Mbytes">701.3</dataSize>
+      <date type="modified">2026-05-27T09:50:14.380Z</date>
+    </dataset>
+    <dataset name="248p1_rt.nc" ID="CDIP_Realtime/248p1_rt.nc" urlPath="cdip/realtime/248p1_rt.nc">
+      <dataSize units="Mbytes">52.51</dataSize>
+      <date type="modified">2026-11-25T21:36:15.602Z</date>
+    </dataset>
+    <dataset name="248p1_xy.nc" ID="CDIP_Realtime/248p1_xy.nc" urlPath="cdip/realtime/248p1_xy.nc">
+      <dataSize units="Mbytes">712.7</dataSize>
+      <date type="modified">2026-10-10T07:12:30.304Z</date>
+    </dataset>
+    <dataset name="249p1_rt.nc" ID="CDIP_Realtime/249p1_rt.nc" urlPath="cdip/realtime/249p1_rt.nc">
+      <dataSize units="Mbytes">59.86</dataSize>
+      <date type="modified">2026-11-25T21:36:05.529Z</date>
+    </dataset>
+    <dataset name="249p1_xy.nc" ID="CDIP_Realtime/249p1_xy.nc" urlPath="cdip/realtime/249p1_xy.nc">
+      <dataSize units="Mbytes">204.9</dataSize>
+      <date type="modified">2026-04-23T19:07:09.883Z</date>
+    </dataset>
+    <dataset name="250p1_rt.nc" ID="CDIP_Realtime/250p1_rt.nc" urlPath="cdip/realtime/250p1_rt.nc">
+      <dataSize units="Mbytes">25.06</dataSize>
+      <date type="modified">2026-11-25T21:31:35.462Z</date>
+    </dataset>
+    <dataset name="250p1_xy.nc" ID="CDIP_Realtime/250p1_xy.nc" urlPath="cdip/realtime/250p1_xy.nc">
+      <dataSize units="Mbytes">510.7</dataSize>
+      <date type="modified">2026-11-25T21:32:47.320Z</date>
+    </dataset>
+    <dataset name="252p1_rt.nc" ID="CDIP_Realtime/252p1_rt.nc" urlPath="cdip/realtime/252p1_rt.nc">
+      <dataSize units="Mbytes">12.95</dataSize>
+      <date type="modified">2026-11-07T03:46:07.831Z</date>
+    </dataset>
+    <dataset name="252p1_xy.nc" ID="CDIP_Realtime/252p1_xy.nc" urlPath="cdip/realtime/252p1_xy.nc">
+      <dataSize units="Mbytes">87.83</dataSize>
+      <date type="modified">2026-10-17T20:49:55.910Z</date>
+    </dataset>
+    <dataset name="260p1_rt.nc" ID="CDIP_Realtime/260p1_rt.nc" urlPath="cdip/realtime/260p1_rt.nc">
+      <dataSize units="Mbytes">34.25</dataSize>
+      <date type="modified">2026-11-25T21:46:15.428Z</date>
+    </dataset>
+    <dataset name="260p1_xy.nc" ID="CDIP_Realtime/260p1_xy.nc" urlPath="cdip/realtime/260p1_xy.nc">
+      <dataSize units="Mbytes">440.2</dataSize>
+      <date type="modified">2026-10-12T13:19:28.323Z</date>
+    </dataset>
+    <dataset name="262p1_rt.nc" ID="CDIP_Realtime/262p1_rt.nc" urlPath="cdip/realtime/262p1_rt.nc">
+      <dataSize units="Mbytes">3.686</dataSize>
+      <date type="modified">2026-11-25T21:36:24.042Z</date>
+    </dataset>
+    <dataset name="263p1_rt.nc" ID="CDIP_Realtime/263p1_rt.nc" urlPath="cdip/realtime/263p1_rt.nc">
+      <dataSize units="Mbytes">2.009</dataSize>
+      <date type="modified">2026-11-25T21:30:14.696Z</date>
+    </dataset>
+    <dataset name="263p1_xy.nc" ID="CDIP_Realtime/263p1_xy.nc" urlPath="cdip/realtime/263p1_xy.nc">
+      <dataSize units="Mbytes">43.15</dataSize>
+      <date type="modified">2026-11-25T21:31:08.864Z</date>
+    </dataset>
+    <dataset name="264p1_rt.nc" ID="CDIP_Realtime/264p1_rt.nc" urlPath="cdip/realtime/264p1_rt.nc">
+      <dataSize units="Mbytes">5.421</dataSize>
+      <date type="modified">2026-11-25T21:36:44.862Z</date>
+    </dataset>
+    <dataset name="265p1_rt.nc" ID="CDIP_Realtime/265p1_rt.nc" urlPath="cdip/realtime/265p1_rt.nc">
+      <dataSize units="Mbytes">62.92</dataSize>
+      <date type="modified">2026-11-25T21:36:29.178Z</date>
+    </dataset>
+    <dataset name="265p1_xy.nc" ID="CDIP_Realtime/265p1_xy.nc" urlPath="cdip/realtime/265p1_xy.nc">
+      <dataSize units="Mbytes">55.76</dataSize>
+      <date type="modified">2026-04-09T07:09:33.133Z</date>
+    </dataset>
+    <dataset name="271p1_rt.nc" ID="CDIP_Realtime/271p1_rt.nc" urlPath="cdip/realtime/271p1_rt.nc">
+      <dataSize units="Mbytes">166.3</dataSize>
+      <date type="modified">2026-11-25T21:36:11.302Z</date>
+    </dataset>
+    <dataset name="271p1_xy.nc" ID="CDIP_Realtime/271p1_xy.nc" urlPath="cdip/realtime/271p1_xy.nc">
+      <dataSize units="Gbytes">1.926</dataSize>
+      <date type="modified">2026-10-12T00:12:06.765Z</date>
+    </dataset>
+    <dataset name="273p1_rt.nc" ID="CDIP_Realtime/273p1_rt.nc" urlPath="cdip/realtime/273p1_rt.nc">
+      <dataSize units="Mbytes">217.6</dataSize>
+      <date type="modified">2026-11-25T21:17:15.533Z</date>
+    </dataset>
+    <dataset name="273p1_xy.nc" ID="CDIP_Realtime/273p1_xy.nc" urlPath="cdip/realtime/273p1_xy.nc">
+      <dataSize units="Gbytes">3.144</dataSize>
+      <date type="modified">2026-02-04T05:49:08.727Z</date>
+    </dataset>
+    <dataset name="274p1_rt.nc" ID="CDIP_Realtime/274p1_rt.nc" urlPath="cdip/realtime/274p1_rt.nc">
+      <dataSize units="Mbytes">29.68</dataSize>
+      <date type="modified">2026-11-25T21:00:25.304Z</date>
+    </dataset>
+    <dataset name="274p1_xy.nc" ID="CDIP_Realtime/274p1_xy.nc" urlPath="cdip/realtime/274p1_xy.nc">
+      <dataSize units="Mbytes">496.3</dataSize>
+      <date type="modified">2026-10-19T14:47:32.731Z</date>
+    </dataset>
+    <dataset name="279p1_rt.nc" ID="CDIP_Realtime/279p1_rt.nc" urlPath="cdip/realtime/279p1_rt.nc">
+      <dataSize units="Mbytes">13.76</dataSize>
+      <date type="modified">2026-11-25T21:36:44.169Z</date>
+    </dataset>
+    <dataset name="279p1_xy.nc" ID="CDIP_Realtime/279p1_xy.nc" urlPath="cdip/realtime/279p1_xy.nc">
+      <dataSize units="Mbytes">69.80</dataSize>
+      <date type="modified">2026-10-19T23:40:29.239Z</date>
+    </dataset>
+    <dataset name="282p1_rt.nc" ID="CDIP_Realtime/282p1_rt.nc" urlPath="cdip/realtime/282p1_rt.nc">
+      <dataSize units="Mbytes">5.110</dataSize>
+      <date type="modified">2026-11-25T21:46:25.100Z</date>
+    </dataset>
+    <dataset name="284p1_rt.nc" ID="CDIP_Realtime/284p1_rt.nc" urlPath="cdip/realtime/284p1_rt.nc">
+      <dataSize units="Mbytes">65.84</dataSize>
+      <date type="modified">2026-11-25T21:32:50.945Z</date>
+    </dataset>
+    <dataset name="284p1_xy.nc" ID="CDIP_Realtime/284p1_xy.nc" urlPath="cdip/realtime/284p1_xy.nc">
+      <dataSize units="Gbytes">1.340</dataSize>
+      <date type="modified">2026-11-25T21:34:00.696Z</date>
+    </dataset>
+    <dataset name="285p1_rt.nc" ID="CDIP_Realtime/285p1_rt.nc" urlPath="cdip/realtime/285p1_rt.nc">
+      <dataSize units="Mbytes">8.543</dataSize>
+      <date type="modified">2026-11-25T21:29:53.080Z</date>
+    </dataset>
+    <dataset name="285p1_xy.nc" ID="CDIP_Realtime/285p1_xy.nc" urlPath="cdip/realtime/285p1_xy.nc">
+      <dataSize units="Mbytes">175.6</dataSize>
+      <date type="modified">2026-11-25T21:31:14.171Z</date>
+    </dataset>
+    <dataset name="430p1_rt.nc" ID="CDIP_Realtime/430p1_rt.nc" urlPath="cdip/realtime/430p1_rt.nc">
+      <dataSize units="Mbytes">48.00</dataSize>
+      <date type="modified">2026-11-25T21:36:36.758Z</date>
+    </dataset>
+    <dataset name="430p1_xy.nc" ID="CDIP_Realtime/430p1_xy.nc" urlPath="cdip/realtime/430p1_xy.nc">
+      <dataSize units="Mbytes">765.8</dataSize>
+      <date type="modified">2026-10-21T16:39:29.910Z</date>
+    </dataset>
+    <dataset name="433p1_rt.nc" ID="CDIP_Realtime/433p1_rt.nc" urlPath="cdip/realtime/433p1_rt.nc">
+      <dataSize units="Mbytes">116.1</dataSize>
+      <date type="modified">2026-11-25T21:06:08.657Z</date>
+    </dataset>
+    <dataset name="433p1_xy.nc" ID="CDIP_Realtime/433p1_xy.nc" urlPath="cdip/realtime/433p1_xy.nc">
+      <dataSize units="Gbytes">2.320</dataSize>
+      <date type="modified">2026-10-19T14:39:37.727Z</date>
+    </dataset>
+    <dataset name="latest_3day.nc" ID="CDIP_Realtime/latest_3day.nc" urlPath="cdip/realtime/latest_3day.nc">
+      <dataSize units="Mbytes">25.96</dataSize>
+      <date type="modified">2026-11-25T21:46:00.649Z</date>
+    </dataset>
+    <dataset name="latest_7day.nc" ID="CDIP_Realtime/latest_7day.nc" urlPath="cdip/realtime/latest_7day.nc">
+      <dataSize units="Mbytes">60.71</dataSize>
+      <date type="modified">2026-11-25T21:42:29.481Z</date>
+    </dataset>
+  </dataset>
+</catalog>
