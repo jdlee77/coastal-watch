@@ -456,7 +456,7 @@ test.describe("River gauges in an Area of responsibility from the link", () => {
     await page.route(/nwps\/v1\/gauges\?/, route => route.abort()); // added last, so it answers first
     await page.goto("/" + GULF);
     await expect(page.locator("#updated")).toContainText("Refreshed");
-    await expect(page.locator("#banner")).toContainText("river gauges are missing");
+    await expect(page.locator("#banner [data-missing=nwps]")).toContainText("NWS river gauges could not be loaded");
     await expect(page.locator("#boardPane .area")).toHaveCount(10);
     await expect(page.locator("#boardPane [id^=card-NWPS-]")).toHaveCount(0);
   });
@@ -528,7 +528,7 @@ test.describe("CDIP wave buoys, read directly from CDIP", () => {
     await page.route(/thredds\.cdip\.ucsd\.edu/, route => route.abort()); // added last, so it answers first
     await page.goto("/" + FLORIDA);
     await expect(page.locator("#updated")).toContainText("Refreshed");
-    await expect(page.locator("#banner")).toContainText("CDIP wave buoys are missing");
+    await expect(page.locator("#banner [data-missing=cdip]")).toContainText("CDIP wave buoys could not be loaded");
     await expect(page.locator("#card-CO-OPS-8720218")).toBeVisible();
   });
 });
@@ -718,5 +718,69 @@ test.describe("Choose area on the Map", () => {
       await expect(page.locator(".cw-marker[data-station='CO-OPS:8720218']")).toHaveCount(1); // Mayport
       await expect(page.locator(".cw-marker[data-station='CO-OPS:8721604']")).toHaveCount(0); // Trident Pier left out
     });
+  });
+});
+
+test.describe("Big areas and failed station lists", () => {
+  const FLORIDA = "#board&area=-81.8,28.3,-80.4,30.5&name=First%20Coast"; // 36 Stations
+  // Add n made-up wave stations inside the Florida rectangle, to make a big area on purpose
+  const extraBuoys = n => (key, j) => {
+    if (key !== "waves.json") return j;
+    for (let i = 0; i < n; i++) j.stations[`NDBC:TEST${i}`] = { name: `Test buoy ${i}`, lat: 28.4 + (i % 20) * 0.1, lon: -80.5 - Math.floor(i / 20) * 0.1,
+      reading: { time: "2026-11-25T21:20:00Z", height_ft: 3.0, period_s: 8, direction_deg: 90 } };
+    return j;
+  };
+  const stationCount = page => page.locator("#boardPane .st:not(.nearby)").count();
+
+  test("an area with more than 150 Stations shows a warning and still shows every Station", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, FLORIDA, { moment: "florida", edit: extraBuoys(120) });
+    await expect(page.locator("#bigArea")).toContainText("This area has 156 Stations");
+    await expect(page.locator("#bigArea")).toContainText("A smaller area is easier to watch");
+    expect(await stationCount(page)).toBe(156);
+    await expect(page.locator("#card-NDBC-TEST119 .val")).toContainText("3.0 ft");
+  });
+
+  test("an area with fewer than 150 Stations shows no warning", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, FLORIDA, { moment: "florida" });
+    expect(await stationCount(page)).toBe(36);
+    await expect(page.locator("#bigArea")).toHaveCount(0);
+  });
+
+  // One Station from each network in the Florida area
+  const SAMPLE = { coops: "#card-CO-OPS-8720218", nwps: "#card-NWPS-JNHF1", cdip: "#card-CDIP-194", ndbc: "#card-NDBC-41070" };
+  const LISTS = {
+    coops: [/mdapi\/prod\/webapi\/stations\.json/, "NOAA tide gauges (CO-OPS) could not be loaded"],
+    nwps: [/nwps\/v1\/gauges\?/, "NWS river gauges could not be loaded"],
+    cdip: [/thredds\.cdip\.ucsd\.edu/, "CDIP wave buoys could not be loaded"],
+    ndbc: [/\/data\/waves\.json/, "NDBC wave buoys could not be loaded"],
+  };
+  for (const [net, [url, text]] of Object.entries(LISTS)) {
+    test(`when the ${net.toUpperCase()} list fails, the page names that network and still shows the others`, async ({ page }) => {
+      await page.setViewportSize(DESK);
+      await useFixtures(page, { moment: "florida" });
+      await page.route(url, route => route.abort()); // added last, so it answers first
+      await page.goto("/" + FLORIDA);
+      await expect(page.locator("#updated")).toContainText("Refreshed");
+      await expect(page.locator(`#banner [data-missing=${net}]`)).toContainText(text);
+      await expect(page.locator(`#banner [data-missing=${net}]`)).toContainText("missing from this view, not absent");
+      await expect(page.locator("#banner [data-missing]")).toHaveCount(1);
+      for (const [other, card] of Object.entries(SAMPLE))
+        await expect(page.locator(card)).toHaveCount(other === net ? 0 : 1);
+    });
+  }
+
+  test("a station list that failed is read again at the next refresh", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await useFixtures(page, { moment: "florida" });
+    let fail = true;
+    await page.route(/nwps\/v1\/gauges\?/, route => fail ? route.abort() : route.fallback());
+    await page.goto("/" + FLORIDA);
+    await expect(page.locator("#banner [data-missing=nwps]")).toHaveCount(1);
+    fail = false;
+    await page.getByRole("button", { name: "Refresh now" }).click();
+    await expect(page.locator("#banner [data-missing]")).toHaveCount(0);
+    await expect(page.locator("#card-NWPS-JNHF1")).toHaveCount(1);
   });
 });
