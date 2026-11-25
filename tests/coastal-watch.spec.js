@@ -339,3 +339,59 @@ test.describe("Oregon as an Area definition", () => {
     await expect(offices).toContainText("NWS Medford: Florence to Port Orford / Gold Beach");
   });
 });
+
+test.describe("An Area of responsibility from the link", () => {
+  const TAMPA = "area=-82.9,27.5,-82.35,28.05";
+  const TAMPA_GAUGES = ["Clearwater Beach", "East Bay", "Old Port Tampa", "St. Petersburg", "Port Manatee"]; // north to south
+  const openArea = (page, hash, opts = {}) => open(page, hash, { moment: "tampa", ...opts });
+
+  test("shows one Coastal area per tide gauge, named after it, north to south", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openArea(page, `#board&${TAMPA}&name=Tampa%20Bay`);
+    const names = await page.locator("#boardPane .area").evaluateAll(els => els.map(e => e.dataset.area));
+    expect(names).toEqual(TAMPA_GAUGES);
+    await expect(page.locator("#card-CO-OPS-8726520 .val")).toContainText("ft");
+    for (const a of AREAS) await expect(area(page, a)).toHaveCount(0); // nothing from Oregon
+  });
+
+  test("the header shows the name from the link, or Custom area without one", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openArea(page, `#board&${TAMPA}&name=Tampa%20Bay`);
+    await expect(page.locator("header h1")).toContainText("Tampa Bay");
+    await openArea(page, `#board&${TAMPA}`);
+    await page.reload();
+    await expect(page.locator("#updated")).toContainText("Refreshed");
+    await expect(page.locator("header h1")).toContainText("Custom area");
+  });
+
+  test("times are in the area's own local time, with its zone", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await openArea(page, `#board&${TAMPA}`);
+    await expect(page.locator("#card-CO-OPS-8726520 .time")).toHaveText(/^\d\d:\d\d EST \(/);
+    await expect(page.locator("#offices")).toContainText("NWS Ruskin: Clearwater Beach to Port Manatee");
+  });
+
+  test("area, Layout and text size work together in one link, and the Map shows the whole area", async ({ page }) => {
+    await page.setViewportSize(WALL);
+    await openArea(page, `#split&text=xl&${TAMPA}&name=Tampa%20Bay`);
+    expect(await layoutOf(page)).toBe("split");
+    await expect(page.locator("html")).toHaveClass(/text-xl/);
+    await expect(page).toHaveURL(/#split&text=xl&area=-82\.9,27\.5,-82\.35,28\.05&name=Tampa%20Bay$/);
+    await expect(page.locator(".cw-marker")).toHaveCount(5);
+    const box = await page.locator("#map").boundingBox();
+    for (const el of await page.locator(".cw-marker").all()) {
+      const b = await el.boundingBox();
+      expect(b.x).toBeGreaterThanOrEqual(box.x - 1);
+      expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width + 1);
+    }
+  });
+
+  test("changing the area in the link loads the new area", async ({ page }) => {
+    await page.setViewportSize(DESK);
+    await open(page, "#board");
+    await expect(area(page, "Newport")).toHaveCount(1);
+    await page.evaluate(h => { location.hash = h; }, `#board&${TAMPA}&name=Tampa%20Bay`);
+    await expect(page.locator("header h1")).toContainText("Tampa Bay");
+    await expect(page.locator("#boardPane .area")).toHaveCount(5);
+  });
+});

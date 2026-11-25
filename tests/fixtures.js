@@ -7,6 +7,8 @@ const meta = JSON.parse(fs.readFileSync(path.join(DIR, "meta.json"), "utf8"));
 // The moment the fixtures were recorded. Tests freeze the page's clock here,
 // so Fresh/Stale/Offline results do not depend on when the tests run.
 const NOW = new Date(meta.recorded);
+// Other Areas of responsibility were recorded at their own moments (meta.json "moments").
+const MOMENTS = Object.fromEntries(Object.entries(meta.moments || {}).map(([k, v]) => [k, new Date(v)]));
 
 const read = key => JSON.parse(fs.readFileSync(path.join(DIR, key), "utf8"));
 // A 1x1 grey PNG stands in for background map tiles.
@@ -17,8 +19,8 @@ const TILE = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQV
  * edit(key, json) may return a changed copy to create a rare case on purpose.
  * tiles: "ok" (grey tiles) or "fail" (every tile request fails).
  */
-async function useFixtures(page, { edit = null, tiles = "ok" } = {}) {
-  await page.clock.setFixedTime(NOW);
+async function useFixtures(page, { edit = null, tiles = "ok", moment = null } = {}) {
+  await page.clock.setFixedTime(moment ? MOMENTS[moment] : NOW);
   await page.route(url => !/^http:\/\/localhost:8787\//.test(url.href) || url.pathname.endsWith("/data/waves.json"), async route => {
     const url = route.request().url();
     if (url.includes("basemap.nationalmap.gov")) {

@@ -11,6 +11,7 @@ function fixtureKey(url) {
     return `coops-${q.get("product")}${interval}-${q.get("station")}.json`;
   }
   let m;
+  if (u.pathname.endsWith("/mdapi/prod/webapi/stations.json")) return `mdapi-stations-${q.get("type")}.json`;
   if ((m = u.pathname.match(/\/mdapi\/prod\/webapi\/stations\/(\w+)\/(floodlevels|datums)\.json$/))) return `mdapi-${m[1]}-${m[2]}.json`;
   if ((m = u.pathname.match(/\/nwps\/v1\/gauges\/(\w+)\/stageflow\/forecast$/))) return `nwps-${m[1]}-forecast.json`;
   if ((m = u.pathname.match(/\/nwps\/v1\/gauges\/(\w+)$/))) return `nwps-${m[1]}.json`;
